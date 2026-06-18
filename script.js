@@ -751,25 +751,12 @@ function moveMonsterSafely(delta) {
     return;
   }
 
-  if (canMoveX) monster.x = nextX;
-  if (canMoveY) monster.y = nextY;
-}
+  if (canMoveX) {
+    monster.x = nextX;
+  }
 
-  const blockedX = isCircleTouchingObstacles(nextX, monster.y, radius);
-  const blockedY = isCircleTouchingObstacles(monster.x, nextY, radius);
-
-  if (Math.abs(dx) > Math.abs(dy)) {
-    if (!blockedX) {
-      monster.x = nextX;
-    } else if (!blockedY) {
-      monster.y = nextY;
-    }
-  } else {
-    if (!blockedY) {
-      monster.y = nextY;
-    } else if (!blockedX) {
-      monster.x = nextX;
-    }
+  if (canMoveY) {
+    monster.y = nextY;
   }
 }
 
@@ -914,8 +901,13 @@ window.addEventListener("resize", () => {
   updateRender();
 });
 
-startBtn.addEventListener("click", () => startGame("normal"));
-endlessBtn.addEventListener("click", () => startGame("endless"));
+if (startBtn) {
+  startBtn.addEventListener("click", () => startGame("normal"));
+}
+
+if (endlessBtn) {
+  endlessBtn.addEventListener("click", () => startGame("endless"));
+}
 
 applyLevelVisuals();
 updateRender();
