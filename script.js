@@ -268,13 +268,21 @@ function endGame(title, description, statusText) {
   gameStatus.textContent = statusText;
 
   if (statusText === "승리" && currentLevel < 3) {
-    messageEl.innerHTML = `
-      <h2>${currentLevel}단계 클리어!</h2>
-      <p>${description}</p>
-      <p>다음 단계에서는 괴물이 더 빨라지고, 손전등 배터리 소모가 증가합니다.</p>
-      <button id="nextLevelBtn">다음 단계로</button>
-      <button id="restartBtn">처음부터 다시</button>
-    `;
+   messageEl.innerHTML = `
+  <h2>${currentLevel}단계 클리어!</h2>
+  <p>${description}</p>
+  <p>다음 단계에서는 괴물이 더 빨라지고, 손전등 배터리 소모가 증가합니다.</p>
+
+  <div style="
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    margin-top:24px;
+  ">
+    <button id="nextLevelBtn">다음 단계로</button>
+    <button id="restartBtn">처음부터 다시</button>
+  </div>
+`;
     messageEl.classList.remove("hidden");
 
     document.getElementById("nextLevelBtn").addEventListener("click", startNextLevel);
