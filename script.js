@@ -90,6 +90,53 @@ function playFlashlightOffSound() {
   });
 }
 
+function playVictorySound() {
+  if (!audioContext) return;
+
+  const now = audioContext.currentTime;
+  const notes = [523.25, 659.25, 783.99];
+
+  notes.forEach((freq, index) => {
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const startTime = now + index * 0.15;
+
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(freq, startTime);
+
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.18, startTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.25);
+
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+
+    osc.start(startTime);
+    osc.stop(startTime + 0.3);
+  });
+}
+
+function playDefeatSound() {
+  if (!audioContext) return;
+
+  const now = audioContext.currentTime;
+  const osc = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(320, now);
+  osc.frequency.exponentialRampToValueAtTime(90, now + 0.8);
+
+  gain.gain.setValueAtTime(0.18, now);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+
+  osc.connect(gain);
+  gain.connect(audioContext.destination);
+
+  osc.start(now);
+  osc.stop(now + 0.8);
+}
+
 function playClickSound({ startFrequency, endFrequency, duration, volume, waveType }) {
   if (!audioContext) return;
 
@@ -159,6 +206,14 @@ function endGame(title, description, statusText) {
     isFlashlightOn = false;
     wasFlashlightOn = false;
     playFlashlightOffSound();
+  }
+
+  if (statusText === "승리") {
+    playVictorySound();
+  }
+
+  if (statusText === "패배") {
+    playDefeatSound();
   }
 
   gameStatus.textContent = statusText;
