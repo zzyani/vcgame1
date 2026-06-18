@@ -89,6 +89,15 @@ function getGameSize() {
   };
 }
 
+function initGameElementStyles() {
+  monsterEl.style.transition =
+    "background 0.4s ease, box-shadow 0.4s ease, border-radius 0.4s ease, width 0.4s ease, height 0.4s ease, filter 0.12s linear";
+
+  playerEl.style.transition = "none";
+  exitEl.style.transition = "none";
+  flashlightEl.style.transition = "opacity 0.08s linear";
+}
+
 function initAudio() {
   if (!audioContext) {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -632,7 +641,7 @@ function getRankingHTML() {
 function gameLoop(now) {
   if (!isRunning) return;
 
-  const delta = Math.min((now - lastTime) / 1000, 0.04);
+  const delta = Math.min((now - lastTime) / 1000, 1 / 60);
   lastTime = now;
   playTime += delta;
 
@@ -725,13 +734,13 @@ function moveMonsterSafely(delta) {
   if (distance <= 0) return;
 
   const levelData = getLevelData(currentLevel);
-  const fixedStep = Math.min(levelData.monsterSpeed * delta, levelData.monsterSpeed / 60);
+  const step = levelData.monsterSpeed * delta;
 
   const dirX = dx / distance;
   const dirY = dy / distance;
 
-  const nextX = clamp(monster.x + dirX * fixedStep, radius, width - radius);
-  const nextY = clamp(monster.y + dirY * fixedStep, radius, height - radius);
+  const nextX = clamp(monster.x + dirX * step, radius, width - radius);
+  const nextY = clamp(monster.y + dirY * step, radius, height - radius);
 
   if (!isCircleTouchingObstacles(nextX, nextY, radius)) {
     monster.x = nextX;
@@ -742,21 +751,18 @@ function moveMonsterSafely(delta) {
   const canMoveX = !isCircleTouchingObstacles(nextX, monster.y, radius);
   const canMoveY = !isCircleTouchingObstacles(monster.x, nextY, radius);
 
-  if (canMoveX && canMoveY) {
-    if (Math.abs(dx) > Math.abs(dy)) {
-      monster.x = nextX;
-    } else {
-      monster.y = nextY;
-    }
+  if (canMoveX && Math.abs(dx) >= Math.abs(dy)) {
+    monster.x = nextX;
+    return;
+  }
+
+  if (canMoveY) {
+    monster.y = nextY;
     return;
   }
 
   if (canMoveX) {
     monster.x = nextX;
-  }
-
-  if (canMoveY) {
-    monster.y = nextY;
   }
 }
 
@@ -909,5 +915,6 @@ if (endlessBtn) {
   endlessBtn.addEventListener("click", () => startGame("endless"));
 }
 
+initGameElementStyles();
 applyLevelVisuals();
 updateRender();
