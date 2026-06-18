@@ -13,6 +13,7 @@ const obstacleLayer = document.getElementById("obstacleLayer");
 const keys = new Set();
 const RANKING_KEY = "lightMonsterRanking";
 const MAX_LEVEL = 5;
+const AMBIENT_VOLUME = 0.12;
 
 const levels = {
   1: { name: "1단계", monsterSpeed: 120, batteryDrain: 22, batteryCharge: 7, lightRange: 230, monsterScale: 1, obstacleCount: 1 },
@@ -196,7 +197,7 @@ function startAmbientMusic() {
 
   ambientGain = audioContext.createGain();
   ambientGain.gain.setValueAtTime(0.0001, audioContext.currentTime);
-  ambientGain.gain.exponentialRampToValueAtTime(0.045, audioContext.currentTime + 1.2);
+  ambientGain.gain.exponentialRampToValueAtTime(AMBIENT_VOLUME, audioContext.currentTime + 1.2);
 
   const frequencies = [55, 82.41, 110];
 
@@ -234,7 +235,7 @@ function resumeAmbientMusic() {
 
   ambientGain.gain.cancelScheduledValues(audioContext.currentTime);
   ambientGain.gain.setValueAtTime(0.0001, audioContext.currentTime);
-  ambientGain.gain.exponentialRampToValueAtTime(0.045, audioContext.currentTime + 0.8);
+  ambientGain.gain.exponentialRampToValueAtTime(AMBIENT_VOLUME, audioContext.currentTime + 0.8);
 }
 
 function stopAmbientMusic() {
@@ -461,6 +462,10 @@ function startGame() {
 }
 
 function startNextLevel() {
+  initAudio();
+  stopAmbientMusic();
+  startAmbientMusic();
+
   currentLevel += 1;
   resetLevel();
   animationId = requestAnimationFrame(gameLoop);
