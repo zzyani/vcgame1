@@ -22,6 +22,14 @@ const levels = {
   5: { name: "5단계", monsterSpeed: 235, batteryDrain: 46, batteryCharge: 3, lightRange: 155, monsterScale: 1.65, obstacleCount: 5 },
 };
 
+const obstacleTypes = [
+  { className: "obstacle-rock", width: 64, height: 58 },
+  { className: "obstacle-crystal", width: 48, height: 76 },
+  { className: "obstacle-pillar", width: 42, height: 92 },
+  { className: "obstacle-wall", width: 110, height: 34 },
+  { className: "obstacle-spike", width: 60, height: 62 },
+];
+
 const player = {
   x: 80,
   y: 80,
@@ -56,6 +64,8 @@ let playTime = 0;
 let totalPlayTime = 0;
 let animationId = null;
 let audioContext = null;
+let monsterStuckTime = 0;
+let monsterDetour = null;
 
 function getGameSize() {
   return {
@@ -204,6 +214,8 @@ function resetLevel() {
   monster.x = width * 0.55;
   monster.y = height * 0.45;
   monster.speed = levelData.monsterSpeed;
+  monsterStuckTime = 0;
+  monsterDetour = null;
 
   exit.x = width - 80;
   exit.y = 70;
@@ -231,44 +243,140 @@ function createObstacles() {
   obstacles = [];
   obstacleLayer.innerHTML = "";
 
-  const obstacleSize = 64;
-  const safeZones = [
-    { x: player.x, y: player.y, radius: 120 },
-    { x: exit.x, y: exit.y, radius: 120 },
-    { x: monster.x, y: monster.y, radius: 120 },
-  ];
+  let attempts = 0;
 
-  let tryCount = 0;
+  while (attempts < 80) {
+    attempts += 1;
+    obstacles = [];
 
-  while (obstacles.length < levelData.obstacleCount && tryCount < 300) {
-    tryCount += 1;
+    let tryCount = 0;
 
-    const obstacle = {
-      x: randomRange(120, width - 120),
-      y: randomRange(110, height - 110),
-      size: obstacleSize,
-    };
+    while (obstacles.length < levelData.obstacleCount && tryCount < 500) {
+      tryCount += 1;
 
-    const isInSafeZone = safeZones.some((zone) => {
-      return Math.hypot(obstacle.x - zone.x, obstacle.y - zone.y) < zone.radius;
-    });
+      const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
 
-    const isTooCloseToOtherObstacle = obstacles.some((other) => {
-      return Math.hypot(obstacle.x - other.x, obstacle.y - other.y) < obstacleSize + 38;
-    });
+      const obstacle = {
+        x: randomRange(120, width - 120),
+        y: randomRange(110, height - 110),
+        width: type.width,
+        height: type.height,
+        className: type.className,
+      };
 
-    if (!isInSafeZone && !isTooCloseToOtherObstacle) {
-      obstacles.push(obstacle);
+      if (canPlaceObstacle(obstacle)) {
+        obstacles.push(obstacle);
+      }
+    }
+
+    if (obstacles.length === levelData.obstacleCount && isMapPlayable()) {
+      break;
     }
   }
 
+  obstacleLayer.innerHTML = "";
+
   obstacles.forEach((obstacle) => {
     const obstacleEl = document.createElement("div");
-    obstacleEl.className = "obstacle";
+    obstacleEl.className = `obstacle ${obstacle.className}`;
     obstacleEl.style.left = `${obstacle.x}px`;
     obstacleEl.style.top = `${obstacle.y}px`;
+    obstacleEl.style.width = `${obstacle.width}px`;
+    obstacleEl.style.height = `${obstacle.height}px`;
     obstacleLayer.appendChild(obstacleEl);
   });
+}
+
+function canPlaceObstacle(obstacle) {
+  const safeZones = [
+    { x: player.x, y: player.y, radius: 140 },
+    { x: exit.x, y: exit.y, radius: 140 },
+    { x: monster.x, y: monster.y, radius: 150 },
+  ];
+
+  const inSafeZone = safeZones.some((zone) => {
+    return Math.hypot(obstacle.x - zone.x, obstacle.y - zone.y) < zone.radius;
+  });
+
+  if (inSafeZone) return false;
+
+  const tooClose = obstacles.some((other) => {
+    return rectsOverlap(
+      obstacle.x,
+      obstacle.y,
+      obstacle.width + 50,
+      obstacle.height + 50,
+      other.x,
+      other.y,
+      other.width,
+      other.height
+    );
+  });
+
+  return !tooClose;
+}
+
+function isMapPlayable() {
+  return hasGridPath(monster.x, monster.y, player.x, player.y) &&
+         hasGridPath(player.x, player.y, exit.x, exit.y);
+}
+
+function hasGridPath(startX, startY, targetX, targetY) {
+  const { width, height } = getGameSize();
+  const gridSize = 40;
+  const cols = Math.floor(width / gridSize);
+  const rows = Math.floor(height / gridSize);
+
+  const start = {
+    x: clamp(Math.floor(startX / gridSize), 0, cols - 1),
+    y: clamp(Math.floor(startY / gridSize), 0, rows - 1),
+  };
+
+  const target = {
+    x: clamp(Math.floor(targetX / gridSize), 0, cols - 1),
+    y: clamp(Math.floor(targetY / gridSize), 0, rows - 1),
+  };
+
+  const queue = [start];
+  const visited = new Set([`${start.x},${start.y}`]);
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+
+    if (current.x === target.x && current.y === target.y) {
+      return true;
+    }
+
+    const directions = [
+      { x: 1, y: 0 },
+      { x: -1, y: 0 },
+      { x: 0, y: 1 },
+      { x: 0, y: -1 },
+    ];
+
+    directions.forEach((dir) => {
+      const next = {
+        x: current.x + dir.x,
+        y: current.y + dir.y,
+      };
+
+      const key = `${next.x},${next.y}`;
+
+      if (
+        next.x >= 0 &&
+        next.x < cols &&
+        next.y >= 0 &&
+        next.y < rows &&
+        !visited.has(key) &&
+        !isPointBlocked(next.x * gridSize + gridSize / 2, next.y * gridSize + gridSize / 2, 26)
+      ) {
+        visited.add(key);
+        queue.push(next);
+      }
+    });
+  }
+
+  return false;
 }
 
 function startGame() {
@@ -308,13 +416,8 @@ function endGame(title, description, statusText) {
 
   clearKeyState();
 
-  if (statusText === "승리") {
-    playVictorySound();
-  }
-
-  if (statusText === "패배") {
-    playDefeatSound();
-  }
+  if (statusText === "승리") playVictorySound();
+  if (statusText === "패배") playDefeatSound();
 
   gameStatus.textContent = statusText;
 
@@ -408,9 +511,7 @@ function saveRanking(record) {
     if (a.result === "승리" && b.result !== "승리") return -1;
     if (a.result !== "승리" && b.result === "승리") return 1;
 
-    if (a.level !== b.level) {
-      return b.level - a.level;
-    }
+    if (a.level !== b.level) return b.level - a.level;
 
     if (a.result === "승리" && b.result === "승리") {
       return a.time - b.time;
@@ -419,8 +520,7 @@ function saveRanking(record) {
     return b.date - a.date;
   });
 
-  const top10 = rankings.slice(0, 10);
-  localStorage.setItem(RANKING_KEY, JSON.stringify(top10));
+  localStorage.setItem(RANKING_KEY, JSON.stringify(rankings.slice(0, 10)));
 }
 
 function getRankingHTML() {
@@ -494,13 +594,8 @@ function updatePlayer(delta) {
   const nextX = clamp(player.x + dx * player.speed * delta, radius, width - radius);
   const nextY = clamp(player.y + dy * player.speed * delta, radius, height - radius);
 
-  if (!isCircleTouchingObstacles(nextX, player.y, player.size / 2)) {
-    player.x = nextX;
-  }
-
-  if (!isCircleTouchingObstacles(player.x, nextY, player.size / 2)) {
-    player.y = nextY;
-  }
+  if (!isCircleTouchingObstacles(nextX, player.y, radius)) player.x = nextX;
+  if (!isCircleTouchingObstacles(player.x, nextY, radius)) player.y = nextY;
 }
 
 function updateFlashlight(delta) {
@@ -508,21 +603,14 @@ function updateFlashlight(delta) {
 
   isFlashlightOn = keys.has("Space") && battery > 0;
 
-  if (isFlashlightOn && !wasFlashlightOn) {
-    playFlashlightOnSound();
-  }
-
-  if (!isFlashlightOn && wasFlashlightOn) {
-    playFlashlightOffSound();
-  }
+  if (isFlashlightOn && !wasFlashlightOn) playFlashlightOnSound();
+  if (!isFlashlightOn && wasFlashlightOn) playFlashlightOffSound();
 
   wasFlashlightOn = isFlashlightOn;
 
-  if (isFlashlightOn) {
-    battery -= levelData.batteryDrain * delta;
-  } else {
-    battery += levelData.batteryCharge * delta;
-  }
+  battery += isFlashlightOn
+    ? -levelData.batteryDrain * delta
+    : levelData.batteryCharge * delta;
 
   battery = clamp(battery, 0, 100);
 
@@ -537,29 +625,100 @@ function updateMonster(delta) {
 
   if (stunned) return;
 
-  const dx = player.x - monster.x;
-  const dy = player.y - monster.y;
+  const target = monsterDetour || player;
+  const beforeX = monster.x;
+  const beforeY = monster.y;
+
+  moveMonsterToward(target.x, target.y, delta);
+
+  const movedDistance = Math.hypot(monster.x - beforeX, monster.y - beforeY);
+
+  if (movedDistance < 0.5) {
+    monsterStuckTime += delta;
+  } else {
+    monsterStuckTime = 0;
+  }
+
+  if (monsterStuckTime > 0.35) {
+    monsterDetour = findMonsterDetourPoint();
+    monsterStuckTime = 0;
+  }
+
+  if (monsterDetour && Math.hypot(monster.x - monsterDetour.x, monster.y - monsterDetour.y) < 28) {
+    monsterDetour = null;
+  }
+}
+
+function moveMonsterToward(targetX, targetY, delta) {
+  const dx = targetX - monster.x;
+  const dy = targetY - monster.y;
   const distance = Math.hypot(dx, dy);
 
-  if (distance > 0) {
-    const nextX = monster.x + (dx / distance) * monster.speed * delta;
-    const nextY = monster.y + (dy / distance) * monster.speed * delta;
+  if (distance <= 0) return;
 
-    if (!isCircleTouchingObstacles(nextX, monster.y, getMonsterHitRadius())) {
-      monster.x = nextX;
-    }
+  const speed = monster.speed * delta;
+  const dirX = dx / distance;
+  const dirY = dy / distance;
 
-    if (!isCircleTouchingObstacles(monster.x, nextY, getMonsterHitRadius())) {
-      monster.y = nextY;
+  const candidates = [
+    { x: monster.x + dirX * speed, y: monster.y + dirY * speed },
+    { x: monster.x + dirX * speed, y: monster.y },
+    { x: monster.x, y: monster.y + dirY * speed },
+    { x: monster.x - dirY * speed, y: monster.y + dirX * speed },
+    { x: monster.x + dirY * speed, y: monster.y - dirX * speed },
+  ];
+
+  let best = null;
+  let bestDistance = Infinity;
+
+  candidates.forEach((candidate) => {
+    if (!isCircleTouchingObstacles(candidate.x, candidate.y, getMonsterHitRadius())) {
+      const targetDistance = Math.hypot(candidate.x - targetX, candidate.y - targetY);
+
+      if (targetDistance < bestDistance) {
+        best = candidate;
+        bestDistance = targetDistance;
+      }
     }
+  });
+
+  if (best) {
+    monster.x = best.x;
+    monster.y = best.y;
   }
+}
+
+function findMonsterDetourPoint() {
+  const { width, height } = getGameSize();
+  const radius = getMonsterHitRadius();
+  const points = [];
+
+  for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 6) {
+    points.push({
+      x: clamp(monster.x + Math.cos(angle) * 120, radius, width - radius),
+      y: clamp(monster.y + Math.sin(angle) * 120, radius, height - radius),
+    });
+  }
+
+  const validPoints = points.filter((point) => {
+    return !isCircleTouchingObstacles(point.x, point.y, radius);
+  });
+
+  if (validPoints.length === 0) return null;
+
+  validPoints.sort((a, b) => {
+    const aDistance = Math.hypot(a.x - player.x, a.y - player.y);
+    const bDistance = Math.hypot(b.x - player.x, b.y - player.y);
+    return aDistance - bDistance;
+  });
+
+  return validPoints[0];
 }
 
 function isMonsterInLight() {
   if (!isFlashlightOn) return false;
 
   const levelData = levels[currentLevel];
-
   const vx = monster.x - player.x;
   const vy = monster.y - player.y;
   const distance = Math.hypot(vx, vy);
@@ -581,11 +740,6 @@ function checkCollision() {
 
   if (monsterDistance < player.size / 2 + getMonsterHitRadius()) {
     endGame("괴물에게 잡혔다", "손전등 타이밍이 조금 늦었습니다.", "패배");
-    return;
-  }
-
-  if (isCircleTouchingObstacles(player.x, player.y, player.size / 2)) {
-    endGame("장애물에 부딪혔다", "어둠 속의 잔해에 발목을 잡혔습니다.", "패배");
     return;
   }
 
@@ -625,14 +779,36 @@ function updateRender() {
 
 function isCircleTouchingObstacles(circleX, circleY, radius) {
   return obstacles.some((obstacle) => {
-    const closestX = clamp(circleX, obstacle.x - obstacle.size / 2, obstacle.x + obstacle.size / 2);
-    const closestY = clamp(circleY, obstacle.y - obstacle.size / 2, obstacle.y + obstacle.size / 2);
-
-    const distanceX = circleX - closestX;
-    const distanceY = circleY - closestY;
-
-    return distanceX * distanceX + distanceY * distanceY < radius * radius;
+    return isCircleTouchingRect(circleX, circleY, radius, obstacle);
   });
+}
+
+function isCircleTouchingRect(circleX, circleY, radius, rect) {
+  const closestX = clamp(circleX, rect.x - rect.width / 2, rect.x + rect.width / 2);
+  const closestY = clamp(circleY, rect.y - rect.height / 2, rect.y + rect.height / 2);
+
+  const distanceX = circleX - closestX;
+  const distanceY = circleY - closestY;
+
+  return distanceX * distanceX + distanceY * distanceY < radius * radius;
+}
+
+function isPointBlocked(x, y, padding) {
+  return obstacles.some((obstacle) => {
+    return (
+      x > obstacle.x - obstacle.width / 2 - padding &&
+      x < obstacle.x + obstacle.width / 2 + padding &&
+      y > obstacle.y - obstacle.height / 2 - padding &&
+      y < obstacle.y + obstacle.height / 2 + padding
+    );
+  });
+}
+
+function rectsOverlap(x1, y1, w1, h1, x2, y2, w2, h2) {
+  return (
+    Math.abs(x1 - x2) < (w1 + w2) / 2 &&
+    Math.abs(y1 - y2) < (h1 + h2) / 2
+  );
 }
 
 function getMonsterHitRadius() {
