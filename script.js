@@ -19,6 +19,7 @@ const levels = {
     batteryDrain: 22,
     batteryCharge: 7,
     lightRange: 230,
+    monsterScale: 1,
   },
   2: {
     name: "2단계",
@@ -26,6 +27,7 @@ const levels = {
     batteryDrain: 30,
     batteryCharge: 5,
     lightRange: 200,
+    monsterScale: 1.18,
   },
   3: {
     name: "3단계",
@@ -33,6 +35,7 @@ const levels = {
     batteryDrain: 38,
     batteryCharge: 3,
     lightRange: 170,
+    monsterScale: 1.35,
   },
 };
 
@@ -191,6 +194,14 @@ function playClickSound({ startFrequency, endFrequency, duration, volume, waveTy
   oscillator.stop(now + duration + 0.02);
 }
 
+function applyLevelVisuals() {
+  gameArea.classList.remove("level-1", "level-2", "level-3");
+  monsterEl.classList.remove("monster-level-1", "monster-level-2", "monster-level-3");
+
+  gameArea.classList.add(`level-${currentLevel}`);
+  monsterEl.classList.add(`monster-level-${currentLevel}`);
+}
+
 function resetLevel() {
   const { width, height } = getGameSize();
   const levelData = levels[currentLevel];
@@ -218,6 +229,7 @@ function resetLevel() {
   messageEl.classList.add("hidden");
   monsterEl.classList.remove("stunned");
 
+  applyLevelVisuals();
   updateRender();
 }
 
@@ -247,7 +259,6 @@ function clearKeyState() {
 function endGame(title, description, statusText) {
   isRunning = false;
   cancelAnimationFrame(animationId);
-  clearKeyState();
 
   totalPlayTime += playTime;
 
@@ -256,6 +267,8 @@ function endGame(title, description, statusText) {
     wasFlashlightOn = false;
     playFlashlightOffSound();
   }
+
+  clearKeyState();
 
   if (statusText === "승리") {
     playVictorySound();
@@ -268,84 +281,79 @@ function endGame(title, description, statusText) {
   gameStatus.textContent = statusText;
 
   if (statusText === "승리" && currentLevel < 3) {
-   messageEl.innerHTML = `
-  <h2>${currentLevel}단계 클리어!</h2>
-  <p>${description}</p>
-  <p>다음 단계에서는 괴물이 더 빨라지고, 손전등 배터리 소모가 증가합니다.</p>
-
-  <div style="
-    display:flex;
-    flex-direction:column;
-    gap:16px;
-    margin-top:24px;
-  ">
-    <button id="nextLevelBtn">다음 단계로</button>
-    <button id="restartBtn">처음부터 다시</button>
-  </div>
-`;
-    messageEl.classList.remove("hidden");
-
-    document.getElementById("nextLevelBtn").addEventListener("click", startNextLevel);
-    document.getElementById("restartBtn").addEventListener("click", startGame);
+    showLevelClearMessage(description);
     return;
   }
 
+  showFinalMessage(title, description, statusText);
+}
+
+function showLevelClearMessage(description) {
+  messageEl.innerHTML = `
+    <h2>${currentLevel}단계 클리어!</h2>
+    <p>${description}</p>
+    <p>다음 단계에서는 괴물이 더 빨라지고, 손전등 배터리 소모가 증가합니다.</p>
+
+    <div class="level-button-wrap">
+      <button id="nextLevelBtn">다음 단계로</button>
+      <button id="restartBtn">처음부터 다시</button>
+    </div>
+  `;
+
+  messageEl.classList.remove("hidden");
+
+  document.getElementById("nextLevelBtn").addEventListener("click", startNextLevel);
+  document.getElementById("restartBtn").addEventListener("click", startGame);
+}
+
+function showFinalMessage(title, description, statusText) {
   messageEl.innerHTML = `
     <h2>${title}</h2>
     <p>${description}</p>
     <p>도달 단계: ${currentLevel}단계</p>
     <p>총 플레이 시간: ${totalPlayTime.toFixed(1)}초</p>
 
-    <div style="margin-top: 16px;">
-      <input 
-        id="nicknameInput" 
-        type="text" 
-        maxlength="10" 
-        placeholder="닉네임 입력"
-        style="
-          padding: 10px 12px;
-          border-radius: 10px;
-          border: none;
-          outline: none;
-          margin-right: 6px;
-        "
-      />
+    <div class="rank-form">
+      <input id="nicknameInput" type="text" maxlength="10" placeholder="닉네임 입력" />
       <button id="saveRankBtn">기록 남기기</button>
     </div>
 
-    <div id="rankingBoard" style="margin-top: 18px; text-align: left;">
+    <div id="rankingBoard" class="ranking-board">
       ${getRankingHTML()}
     </div>
 
-    <button id="restartBtn" style="margin-top: 14px;">다시 시작</button>
+    <button id="restartBtn" class="restart-bottom">다시 시작</button>
   `;
 
   messageEl.classList.remove("hidden");
 
   document.getElementById("restartBtn").addEventListener("click", startGame);
+  document.getElementById("saveRankBtn").addEventListener("click", () => saveCurrentRank(statusText));
+}
 
-  document.getElementById("saveRankBtn").addEventListener("click", () => {
-    const nicknameInput = document.getElementById("nicknameInput");
-    const nickname = nicknameInput.value.trim();
+function saveCurrentRank(statusText) {
+  const nicknameInput = document.getElementById("nicknameInput");
+  const nickname = nicknameInput.value.trim();
 
-    if (!nickname) {
-      alert("닉네임을 입력해주세요.");
-      return;
-    }
+  if (!nickname) {
+    alert("닉네임을 입력해주세요.");
+    return;
+  }
 
-    saveRanking({
-      nickname,
-      result: statusText,
-      level: currentLevel,
-      time: Number(totalPlayTime.toFixed(1)),
-      date: Date.now(),
-    });
-
-    document.getElementById("rankingBoard").innerHTML = getRankingHTML();
-    nicknameInput.disabled = true;
-    document.getElementById("saveRankBtn").disabled = true;
-    document.getElementById("saveRankBtn").textContent = "기록 완료";
+  saveRanking({
+    nickname,
+    result: statusText,
+    level: currentLevel,
+    time: Number(totalPlayTime.toFixed(1)),
+    date: Date.now(),
   });
+
+  document.getElementById("rankingBoard").innerHTML = getRankingHTML();
+  nicknameInput.disabled = true;
+
+  const saveRankBtn = document.getElementById("saveRankBtn");
+  saveRankBtn.disabled = true;
+  saveRankBtn.textContent = "기록 완료";
 }
 
 function getRankings() {
@@ -382,8 +390,8 @@ function getRankingHTML() {
 
   if (rankings.length === 0) {
     return `
-      <h3 style="margin-bottom: 8px;">랭킹 TOP 10</h3>
-      <p style="opacity: 0.8;">아직 기록이 없습니다.</p>
+      <h3>랭킹 TOP 10</h3>
+      <p>아직 기록이 없습니다.</p>
     `;
   }
 
@@ -393,14 +401,7 @@ function getRankingHTML() {
       const levelText = `${rank.level || 1}단계`;
 
       return `
-        <li style="
-          display: flex;
-          justify-content: space-between;
-          gap: 10px;
-          padding: 6px 0;
-          border-bottom: 1px solid rgba(255,255,255,0.15);
-          font-size: 14px;
-        ">
+        <li>
           <span>${index + 1}. ${rank.nickname}</span>
           <span>${resultText} / ${levelText} / ${rank.time}초</span>
         </li>
@@ -409,8 +410,8 @@ function getRankingHTML() {
     .join("");
 
   return `
-    <h3 style="margin-bottom: 8px;">랭킹 TOP 10</h3>
-    <ol style="list-style: none; padding: 0; margin: 0;">
+    <h3>랭킹 TOP 10</h3>
+    <ol class="ranking-list">
       ${rankingItems}
     </ol>
   `;
@@ -525,9 +526,11 @@ function isMonsterInLight() {
 }
 
 function checkCollision() {
+  const levelData = levels[currentLevel];
+  const monsterHitSize = monster.size * levelData.monsterScale;
   const monsterDistance = Math.hypot(player.x - monster.x, player.y - monster.y);
 
-  if (monsterDistance < (player.size + monster.size) / 2) {
+  if (monsterDistance < (player.size + monsterHitSize) / 2) {
     endGame("괴물에게 잡혔다", "손전등 타이밍이 조금 늦었습니다.", "패배");
     return;
   }
@@ -598,4 +601,5 @@ window.addEventListener("resize", () => {
 });
 
 startBtn.addEventListener("click", startGame);
+applyLevelVisuals();
 updateRender();

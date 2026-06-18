@@ -21,23 +21,26 @@
         <span>상태</span>
         <strong id="gameStatus">대기 중</strong>
       </div>
+
       <div class="hud-card">
         <span>배터리</span>
         <div class="battery-bar">
           <div id="batteryFill"></div>
         </div>
       </div>
+
       <div class="hud-card">
         <span>시간</span>
         <strong id="timeText">0.0초</strong>
       </div>
     </section>
 
-    <section class="game-area" id="gameArea">
+    <section class="game-area level-1" id="gameArea">
       <div class="exit" id="exit">EXIT</div>
       <div class="player" id="player"></div>
-      <div class="monster" id="monster"></div>
+      <div class="monster monster-level-1" id="monster"></div>
       <div class="flashlight" id="flashlight"></div>
+
       <div class="message" id="message">
         <h2>출구까지 도망쳐!</h2>
         <p>WASD 또는 방향키로 이동 / Space로 손전등 켜기</p>
@@ -50,7 +53,7 @@
       <ul>
         <li><b>이동:</b> 방향키 또는 WASD</li>
         <li><b>손전등:</b> Space 누르고 있기</li>
-        <li><b>승리:</b> 출구 도달</li>
+        <li><b>승리:</b> 1단계부터 3단계까지 출구 도달</li>
         <li><b>패배:</b> 괴물에게 잡힘 또는 배터리 완전 소진</li>
       </ul>
     </section>
