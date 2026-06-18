@@ -8,35 +8,18 @@ const startBtn = document.getElementById("startBtn");
 const gameStatus = document.getElementById("gameStatus");
 const batteryFill = document.getElementById("batteryFill");
 const timeText = document.getElementById("timeText");
+const obstacleLayer = document.getElementById("obstacleLayer");
 
 const keys = new Set();
 const RANKING_KEY = "lightMonsterRanking";
+const MAX_LEVEL = 5;
 
 const levels = {
-  1: {
-    name: "1단계",
-    monsterSpeed: 120,
-    batteryDrain: 22,
-    batteryCharge: 7,
-    lightRange: 230,
-    monsterScale: 1,
-  },
-  2: {
-    name: "2단계",
-    monsterSpeed: 155,
-    batteryDrain: 30,
-    batteryCharge: 5,
-    lightRange: 200,
-    monsterScale: 1.18,
-  },
-  3: {
-    name: "3단계",
-    monsterSpeed: 190,
-    batteryDrain: 38,
-    batteryCharge: 3,
-    lightRange: 170,
-    monsterScale: 1.35,
-  },
+  1: { name: "1단계", monsterSpeed: 120, batteryDrain: 22, batteryCharge: 7, lightRange: 230, monsterScale: 1, obstacleCount: 1 },
+  2: { name: "2단계", monsterSpeed: 150, batteryDrain: 28, batteryCharge: 6, lightRange: 215, monsterScale: 1.18, obstacleCount: 2 },
+  3: { name: "3단계", monsterSpeed: 178, batteryDrain: 34, batteryCharge: 5, lightRange: 195, monsterScale: 1.35, obstacleCount: 3 },
+  4: { name: "4단계", monsterSpeed: 205, batteryDrain: 40, batteryCharge: 4, lightRange: 175, monsterScale: 1.5, obstacleCount: 4 },
+  5: { name: "5단계", monsterSpeed: 235, batteryDrain: 46, batteryCharge: 3, lightRange: 155, monsterScale: 1.65, obstacleCount: 5 },
 };
 
 const player = {
@@ -62,6 +45,7 @@ const exit = {
   height: 56,
 };
 
+let obstacles = [];
 let currentLevel = 1;
 let battery = 100;
 let isFlashlightOn = false;
@@ -195,8 +179,14 @@ function playClickSound({ startFrequency, endFrequency, duration, volume, waveTy
 }
 
 function applyLevelVisuals() {
-  gameArea.classList.remove("level-1", "level-2", "level-3");
-  monsterEl.classList.remove("monster-level-1", "monster-level-2", "monster-level-3");
+  gameArea.classList.remove("level-1", "level-2", "level-3", "level-4", "level-5");
+  monsterEl.classList.remove(
+    "monster-level-1",
+    "monster-level-2",
+    "monster-level-3",
+    "monster-level-4",
+    "monster-level-5"
+  );
 
   gameArea.classList.add(`level-${currentLevel}`);
   monsterEl.classList.add(`monster-level-${currentLevel}`);
@@ -230,7 +220,55 @@ function resetLevel() {
   monsterEl.classList.remove("stunned");
 
   applyLevelVisuals();
+  createObstacles();
   updateRender();
+}
+
+function createObstacles() {
+  const { width, height } = getGameSize();
+  const levelData = levels[currentLevel];
+
+  obstacles = [];
+  obstacleLayer.innerHTML = "";
+
+  const obstacleSize = 64;
+  const safeZones = [
+    { x: player.x, y: player.y, radius: 120 },
+    { x: exit.x, y: exit.y, radius: 120 },
+    { x: monster.x, y: monster.y, radius: 120 },
+  ];
+
+  let tryCount = 0;
+
+  while (obstacles.length < levelData.obstacleCount && tryCount < 300) {
+    tryCount += 1;
+
+    const obstacle = {
+      x: randomRange(120, width - 120),
+      y: randomRange(110, height - 110),
+      size: obstacleSize,
+    };
+
+    const isInSafeZone = safeZones.some((zone) => {
+      return Math.hypot(obstacle.x - zone.x, obstacle.y - zone.y) < zone.radius;
+    });
+
+    const isTooCloseToOtherObstacle = obstacles.some((other) => {
+      return Math.hypot(obstacle.x - other.x, obstacle.y - other.y) < obstacleSize + 38;
+    });
+
+    if (!isInSafeZone && !isTooCloseToOtherObstacle) {
+      obstacles.push(obstacle);
+    }
+  }
+
+  obstacles.forEach((obstacle) => {
+    const obstacleEl = document.createElement("div");
+    obstacleEl.className = "obstacle";
+    obstacleEl.style.left = `${obstacle.x}px`;
+    obstacleEl.style.top = `${obstacle.y}px`;
+    obstacleLayer.appendChild(obstacleEl);
+  });
 }
 
 function startGame() {
@@ -280,7 +318,7 @@ function endGame(title, description, statusText) {
 
   gameStatus.textContent = statusText;
 
-  if (statusText === "승리" && currentLevel < 3) {
+  if (statusText === "승리" && currentLevel < MAX_LEVEL) {
     showLevelClearMessage(description);
     return;
   }
@@ -292,7 +330,7 @@ function showLevelClearMessage(description) {
   messageEl.innerHTML = `
     <h2>${currentLevel}단계 클리어!</h2>
     <p>${description}</p>
-    <p>다음 단계에서는 괴물이 더 빨라지고, 손전등 배터리 소모가 증가합니다.</p>
+    <p>다음 단계에서는 괴물이 더 빨라지고, 손전등 배터리 소모와 장애물이 증가합니다.</p>
 
     <div class="level-button-wrap">
       <button id="nextLevelBtn">다음 단계로</button>
@@ -453,11 +491,16 @@ function updatePlayer(delta) {
   const { width, height } = getGameSize();
   const radius = player.size / 2;
 
-  player.x += dx * player.speed * delta;
-  player.y += dy * player.speed * delta;
+  const nextX = clamp(player.x + dx * player.speed * delta, radius, width - radius);
+  const nextY = clamp(player.y + dy * player.speed * delta, radius, height - radius);
 
-  player.x = clamp(player.x, radius, width - radius);
-  player.y = clamp(player.y, radius, height - radius);
+  if (!isCircleTouchingObstacles(nextX, player.y, player.size / 2)) {
+    player.x = nextX;
+  }
+
+  if (!isCircleTouchingObstacles(player.x, nextY, player.size / 2)) {
+    player.y = nextY;
+  }
 }
 
 function updateFlashlight(delta) {
@@ -499,8 +542,16 @@ function updateMonster(delta) {
   const distance = Math.hypot(dx, dy);
 
   if (distance > 0) {
-    monster.x += (dx / distance) * monster.speed * delta;
-    monster.y += (dy / distance) * monster.speed * delta;
+    const nextX = monster.x + (dx / distance) * monster.speed * delta;
+    const nextY = monster.y + (dy / distance) * monster.speed * delta;
+
+    if (!isCircleTouchingObstacles(nextX, monster.y, getMonsterHitRadius())) {
+      monster.x = nextX;
+    }
+
+    if (!isCircleTouchingObstacles(monster.x, nextY, getMonsterHitRadius())) {
+      monster.y = nextY;
+    }
   }
 }
 
@@ -526,12 +577,15 @@ function isMonsterInLight() {
 }
 
 function checkCollision() {
-  const levelData = levels[currentLevel];
-  const monsterHitSize = monster.size * levelData.monsterScale;
   const monsterDistance = Math.hypot(player.x - monster.x, player.y - monster.y);
 
-  if (monsterDistance < (player.size + monsterHitSize) / 2) {
+  if (monsterDistance < player.size / 2 + getMonsterHitRadius()) {
     endGame("괴물에게 잡혔다", "손전등 타이밍이 조금 늦었습니다.", "패배");
+    return;
+  }
+
+  if (isCircleTouchingObstacles(player.x, player.y, player.size / 2)) {
+    endGame("장애물에 부딪혔다", "어둠 속의 잔해에 발목을 잡혔습니다.", "패배");
     return;
   }
 
@@ -540,7 +594,7 @@ function checkCollision() {
     Math.abs(player.y - exit.y) < exit.height / 2;
 
   if (isInExit) {
-    if (currentLevel < 3) {
+    if (currentLevel < MAX_LEVEL) {
       endGame("단계 클리어!", `${playTime.toFixed(1)}초 만에 출구에 도착했습니다.`, "승리");
     } else {
       endGame("최종 탈출 성공!", `${totalPlayTime.toFixed(1)}초 만에 모든 단계를 클리어했습니다.`, "승리");
@@ -567,6 +621,26 @@ function updateRender() {
 
   batteryFill.style.width = `${battery}%`;
   timeText.textContent = `${levels[currentLevel].name} / ${playTime.toFixed(1)}초`;
+}
+
+function isCircleTouchingObstacles(circleX, circleY, radius) {
+  return obstacles.some((obstacle) => {
+    const closestX = clamp(circleX, obstacle.x - obstacle.size / 2, obstacle.x + obstacle.size / 2);
+    const closestY = clamp(circleY, obstacle.y - obstacle.size / 2, obstacle.y + obstacle.size / 2);
+
+    const distanceX = circleX - closestX;
+    const distanceY = circleY - closestY;
+
+    return distanceX * distanceX + distanceY * distanceY < radius * radius;
+  });
+}
+
+function getMonsterHitRadius() {
+  return (monster.size * levels[currentLevel].monsterScale) / 2;
+}
+
+function randomRange(min, max) {
+  return Math.random() * (max - min) + min;
 }
 
 function clamp(value, min, max) {
@@ -597,6 +671,7 @@ window.addEventListener("resize", () => {
   exit.x = width - 80;
   exit.y = 70;
 
+  createObstacles();
   updateRender();
 });
 
