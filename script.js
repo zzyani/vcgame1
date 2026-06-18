@@ -10,6 +10,7 @@ const batteryFill = document.getElementById("batteryFill");
 const timeText = document.getElementById("timeText");
 
 const keys = new Set();
+const RANKING_KEY = "lightMonsterRanking";
 
 const player = {
   x: 80,
@@ -217,13 +218,123 @@ function endGame(title, description, statusText) {
   }
 
   gameStatus.textContent = statusText;
+
   messageEl.innerHTML = `
     <h2>${title}</h2>
     <p>${description}</p>
-    <button id="restartBtn">다시 시작</button>
+
+    <div style="margin-top: 16px;">
+      <input 
+        id="nicknameInput" 
+        type="text" 
+        maxlength="10" 
+        placeholder="닉네임 입력"
+        style="
+          padding: 10px 12px;
+          border-radius: 10px;
+          border: none;
+          outline: none;
+          margin-right: 6px;
+        "
+      />
+      <button id="saveRankBtn">기록 남기기</button>
+    </div>
+
+    <div id="rankingBoard" style="margin-top: 18px; text-align: left;">
+      ${getRankingHTML()}
+    </div>
+
+    <button id="restartBtn" style="margin-top: 14px;">다시 시작</button>
   `;
+
   messageEl.classList.remove("hidden");
+
   document.getElementById("restartBtn").addEventListener("click", startGame);
+
+  document.getElementById("saveRankBtn").addEventListener("click", () => {
+    const nicknameInput = document.getElementById("nicknameInput");
+    const nickname = nicknameInput.value.trim();
+
+    if (!nickname) {
+      alert("닉네임을 입력해주세요.");
+      return;
+    }
+
+    saveRanking({
+      nickname,
+      result: statusText,
+      time: Number(playTime.toFixed(1)),
+      date: new Date().toLocaleString(),
+    });
+
+    document.getElementById("rankingBoard").innerHTML = getRankingHTML();
+    nicknameInput.disabled = true;
+    document.getElementById("saveRankBtn").disabled = true;
+    document.getElementById("saveRankBtn").textContent = "기록 완료";
+  });
+}
+
+function getRankings() {
+  const saved = localStorage.getItem(RANKING_KEY);
+  return saved ? JSON.parse(saved) : [];
+}
+
+function saveRanking(record) {
+  const rankings = getRankings();
+
+  rankings.push(record);
+
+  rankings.sort((a, b) => {
+    if (a.result === "승리" && b.result !== "승리") return -1;
+    if (a.result !== "승리" && b.result === "승리") return 1;
+
+    if (a.result === "승리" && b.result === "승리") {
+      return a.time - b.time;
+    }
+
+    return new Date(b.date) - new Date(a.date);
+  });
+
+  const top10 = rankings.slice(0, 10);
+  localStorage.setItem(RANKING_KEY, JSON.stringify(top10));
+}
+
+function getRankingHTML() {
+  const rankings = getRankings();
+
+  if (rankings.length === 0) {
+    return `
+      <h3 style="margin-bottom: 8px;">랭킹 TOP 10</h3>
+      <p style="opacity: 0.8;">아직 기록이 없습니다.</p>
+    `;
+  }
+
+  const rankingItems = rankings
+    .map((rank, index) => {
+      const resultIcon = rank.result === "승리" ? "탈출" : "실패";
+
+      return `
+        <li style="
+          display: flex;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 6px 0;
+          border-bottom: 1px solid rgba(255,255,255,0.15);
+          font-size: 14px;
+        ">
+          <span>${index + 1}. ${rank.nickname}</span>
+          <span>${resultIcon} / ${rank.time}초</span>
+        </li>
+      `;
+    })
+    .join("");
+
+  return `
+    <h3 style="margin-bottom: 8px;">랭킹 TOP 10</h3>
+    <ol style="list-style: none; padding: 0; margin: 0;">
+      ${rankingItems}
+    </ol>
+  `;
 }
 
 function gameLoop(now) {
@@ -387,11 +498,14 @@ window.addEventListener("keyup", (event) => {
 
 window.addEventListener("resize", () => {
   if (!isRunning) return;
+
   const { width, height } = getGameSize();
+
   player.x = clamp(player.x, player.size / 2, width - player.size / 2);
   player.y = clamp(player.y, player.size / 2, height - player.size / 2);
   exit.x = width - 80;
   exit.y = 70;
+
   updateRender();
 });
 
