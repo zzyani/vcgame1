@@ -73,11 +73,11 @@ function getLevelData(level) {
   return {
     name: `${level}단계`,
     visualLevel,
-    monsterSpeed: 120 + endlessBonus * 22,
+    monsterSpeed: 110 + endlessBonus * 14,
     batteryDrain: Math.min(22 + endlessBonus * 4, 65),
     batteryCharge: Math.max(7 - endlessBonus * 0.5, 2),
     lightRange: Math.max(230 - endlessBonus * 8, 120),
-    monsterScale: Math.min(1 + endlessBonus * 0.08, 1.9),
+    monsterScale: 1,
     obstacleCount: Math.min(1 + endlessBonus, 10),
   };
 }
@@ -724,18 +724,36 @@ function moveMonsterSafely(delta) {
 
   if (distance <= 0) return;
 
-  const step = monster.speed * delta;
+  const levelData = getLevelData(currentLevel);
+  const fixedStep = Math.min(levelData.monsterSpeed * delta, levelData.monsterSpeed / 60);
+
   const dirX = dx / distance;
   const dirY = dy / distance;
 
-  const nextX = clamp(monster.x + dirX * step, radius, width - radius);
-  const nextY = clamp(monster.y + dirY * step, radius, height - radius);
+  const nextX = clamp(monster.x + dirX * fixedStep, radius, width - radius);
+  const nextY = clamp(monster.y + dirY * fixedStep, radius, height - radius);
 
   if (!isCircleTouchingObstacles(nextX, nextY, radius)) {
     monster.x = nextX;
     monster.y = nextY;
     return;
   }
+
+  const canMoveX = !isCircleTouchingObstacles(nextX, monster.y, radius);
+  const canMoveY = !isCircleTouchingObstacles(monster.x, nextY, radius);
+
+  if (canMoveX && canMoveY) {
+    if (Math.abs(dx) > Math.abs(dy)) {
+      monster.x = nextX;
+    } else {
+      monster.y = nextY;
+    }
+    return;
+  }
+
+  if (canMoveX) monster.x = nextX;
+  if (canMoveY) monster.y = nextY;
+}
 
   const blockedX = isCircleTouchingObstacles(nextX, monster.y, radius);
   const blockedY = isCircleTouchingObstacles(monster.x, nextY, radius);
@@ -857,7 +875,7 @@ function rectsOverlap(x1, y1, w1, h1, x2, y2, w2, h2) {
 }
 
 function getMonsterHitRadius() {
-  return (monster.size * getLevelData(currentLevel).monsterScale) / 2;
+  return monster.size / 2;
 }
 
 function randomRange(min, max) {
