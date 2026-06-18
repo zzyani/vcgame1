@@ -1,6 +1,4 @@
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -19,10 +17,7 @@ body {
   padding: 34px 0;
 }
 
-.title-area {
-  text-align: center;
-  margin-bottom: 18px;
-}
+.title-area { text-align: center; margin-bottom: 18px; }
 
 .eyebrow {
   margin: 0 0 8px;
@@ -67,9 +62,7 @@ h1 {
   font-size: 13px;
 }
 
-.hud-card strong {
-  font-size: 20px;
-}
+.hud-card strong { font-size: 20px; }
 
 .battery-bar {
   width: 100%;
@@ -94,7 +87,6 @@ h1 {
   overflow: hidden;
   border: 2px solid rgba(255, 255, 255, 0.14);
   border-radius: 28px;
-  background-size: 40px 40px;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
   transition: background 0.6s ease;
 }
@@ -139,10 +131,7 @@ h1 {
   background-size: 40px 40px, 40px 40px, cover;
 }
 
-.player,
-.monster,
-.exit,
-.obstacle {
+.player, .monster, .exit, .obstacle {
   position: absolute;
   transform: translate(-50%, -50%);
 }
@@ -169,56 +158,16 @@ h1 {
   height: 42px;
   z-index: 5;
   border: 2px solid #ff4d88;
-  transition:
-    background 0.4s ease,
-    box-shadow 0.4s ease,
-    border-radius 0.4s ease,
-    width 0.4s ease,
-    height 0.4s ease;
+  transition: 0.4s ease;
 }
 
-.monster-level-1 {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: #2cff8f;
-  box-shadow: 0 0 24px rgba(44, 255, 143, 0.55);
-}
+.monster-level-1 { width: 42px; height: 42px; border-radius: 50%; background: #2cff8f; box-shadow: 0 0 24px rgba(44,255,143,.55); }
+.monster-level-2 { width: 50px; height: 50px; border-radius: 36% 64% 42% 58%; background: #b95cff; box-shadow: 0 0 32px rgba(185,92,255,.75); }
+.monster-level-3 { width: 57px; height: 57px; border-radius: 24% 76% 28% 72%; background: #ff315d; box-shadow: 0 0 42px rgba(255,49,93,.9); }
+.monster-level-4 { width: 63px; height: 63px; border-radius: 18% 82% 35% 65%; background: #36d7ff; box-shadow: 0 0 48px rgba(54,215,255,.9); }
+.monster-level-5 { width: 70px; height: 70px; border-radius: 12% 88% 20% 80%; background: #ff1414; box-shadow: 0 0 58px rgba(255,20,20,1); }
 
-.monster-level-2 {
-  width: 50px;
-  height: 50px;
-  border-radius: 36% 64% 42% 58%;
-  background: #b95cff;
-  box-shadow: 0 0 32px rgba(185, 92, 255, 0.75);
-}
-
-.monster-level-3 {
-  width: 57px;
-  height: 57px;
-  border-radius: 24% 76% 28% 72%;
-  background: #ff315d;
-  box-shadow: 0 0 42px rgba(255, 49, 93, 0.9);
-}
-
-.monster-level-4 {
-  width: 63px;
-  height: 63px;
-  border-radius: 18% 82% 35% 65%;
-  background: #36d7ff;
-  box-shadow: 0 0 48px rgba(54, 215, 255, 0.9);
-}
-
-.monster-level-5 {
-  width: 70px;
-  height: 70px;
-  border-radius: 12% 88% 20% 80%;
-  background: #ff1414;
-  box-shadow: 0 0 58px rgba(255, 20, 20, 1);
-}
-
-.monster::before,
-.monster::after {
+.monster::before, .monster::after {
   content: "";
   position: absolute;
   top: 13px;
@@ -228,13 +177,8 @@ h1 {
   background: #ffeb3b;
 }
 
-.monster::before {
-  left: 10px;
-}
-
-.monster::after {
-  right: 10px;
-}
+.monster::before { left: 10px; }
+.monster::after { right: 10px; }
 
 .monster.stunned {
   filter: brightness(1.8);
@@ -266,9 +210,7 @@ h1 {
   pointer-events: none;
 }
 
-.flashlight.on {
-  opacity: 1;
-}
+.flashlight.on { opacity: 1; }
 
 #obstacleLayer {
   position: absolute;
@@ -278,46 +220,15 @@ h1 {
 }
 
 .obstacle {
-  position: absolute;
-  transform: translate(-50%, -50%);
   border: 2px solid rgba(255, 255, 255, 0.16);
-  box-shadow:
-    inset 0 0 18px rgba(0, 0, 0, 0.45),
-    0 0 18px rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 18px rgba(0,0,0,.45), 0 0 18px rgba(255,255,255,.08);
 }
 
-.obstacle-rock {
-  border-radius: 38% 62% 45% 55%;
-  background: linear-gradient(135deg, #3a3a4f, #171724);
-}
-
-.obstacle-crystal {
-  border-radius: 14px 40px 18px 46px;
-  background: linear-gradient(135deg, #4df2ff, #27315f);
-  box-shadow: 0 0 24px rgba(77, 242, 255, 0.22);
-}
-
-.obstacle-pillar {
-  border-radius: 999px;
-  background: linear-gradient(180deg, #56516c, #1c1a2a);
-}
-
-.obstacle-wall {
-  border-radius: 14px;
-  background: linear-gradient(135deg, #2b2638, #11111d);
-}
-
-.obstacle-spike {
-  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
-  background: linear-gradient(135deg, #ff8a4d, #3a1111);
-}
-.obstacle::after {
-  content: "";
-  position: absolute;
-  inset: 12px;
-  border-radius: 10px;
-  border: 2px solid rgba(255, 255, 255, 0.12);
-}
+.obstacle-rock { border-radius: 38% 62% 45% 55%; background: linear-gradient(135deg, #3a3a4f, #171724); }
+.obstacle-crystal { border-radius: 14px 40px 18px 46px; background: linear-gradient(135deg, #4df2ff, #27315f); box-shadow: 0 0 24px rgba(77,242,255,.22); }
+.obstacle-pillar { border-radius: 999px; background: linear-gradient(180deg, #56516c, #1c1a2a); }
+.obstacle-wall { border-radius: 14px; background: linear-gradient(135deg, #2b2638, #11111d); }
+.obstacle-spike { clip-path: polygon(50% 0%, 100% 100%, 0% 100%); background: linear-gradient(135deg, #ff8a4d, #3a1111); }
 
 .message {
   position: absolute;
@@ -331,9 +242,7 @@ h1 {
   backdrop-filter: blur(6px);
 }
 
-.message.hidden {
-  display: none;
-}
+.message.hidden { display: none; }
 
 .message h2 {
   margin: 0 0 10px;
@@ -357,16 +266,14 @@ button {
   box-shadow: 0 10px 28px rgba(255, 149, 200, 0.25);
 }
 
-.level-button-wrap {
+.title-buttons, .level-button-wrap {
   display: flex;
   flex-direction: column;
   gap: 16px;
   margin-top: 24px;
 }
 
-.rank-form {
-  margin-top: 16px;
-}
+.rank-form { margin-top: 16px; }
 
 .rank-form input {
   padding: 10px 12px;
@@ -396,20 +303,16 @@ button {
   font-size: 14px;
 }
 
-.restart-bottom {
-  margin-top: 14px;
-}
+.restart-bottom { margin-top: 14px; }
 
 .guide {
   margin-top: 18px;
   padding: 18px 22px;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255,255,255,.07);
 }
 
-.guide h2 {
-  margin: 0 0 10px;
-}
+.guide h2 { margin: 0 0 10px; }
 
 .guide ul {
   margin: 0;
@@ -424,16 +327,7 @@ button {
 }
 
 @media (max-width: 720px) {
-  .hud {
-    grid-template-columns: 1fr;
-  }
-
-  .game-area {
-    min-height: 520px;
-  }
-
-  .rank-form input {
-    width: 100%;
-    margin: 0 0 10px;
-  }
+  .hud { grid-template-columns: 1fr; }
+  .game-area { min-height: 520px; }
+  .rank-form input { width: 100%; margin: 0 0 10px; }
 }
