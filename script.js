@@ -24,9 +24,28 @@ const obstacleTypes = [
   { className: "obstacle-spike", width: 60, height: 62 },
 ];
 
-const player = { x: 80, y: 80, size: 30, speed: 240, lastDirX: 1, lastDirY: 0 };
-const monster = { x: 520, y: 320, size: 42, speed: 120 };
-const exit = { x: 0, y: 0, width: 96, height: 56 };
+const player = {
+  x: 80,
+  y: 80,
+  size: 30,
+  speed: 240,
+  lastDirX: 1,
+  lastDirY: 0,
+};
+
+const monster = {
+  x: 520,
+  y: 320,
+  size: 42,
+  speed: 120,
+};
+
+const exit = {
+  x: 0,
+  y: 0,
+  width: 96,
+  height: 56,
+};
 
 let mode = "normal";
 let currentLevel = 1;
@@ -43,11 +62,12 @@ let audioContext = null;
 let ambientOscillators = [];
 let ambientGain = null;
 let isAmbientPlaying = false;
-let monsterStuckTime = 0;
-let monsterDetour = null;
 
 function getLevelData(level) {
-  const endlessBonus = mode === "endless" ? Math.max(0, level - 1) : Math.min(level - 1, MAX_LEVEL - 1);
+  const endlessBonus = mode === "endless"
+    ? Math.max(0, level - 1)
+    : Math.min(level - 1, MAX_LEVEL - 1);
+
   const visualLevel = ((level - 1) % 5) + 1;
 
   return {
@@ -63,12 +83,20 @@ function getLevelData(level) {
 }
 
 function getGameSize() {
-  return { width: gameArea.clientWidth, height: gameArea.clientHeight };
+  return {
+    width: gameArea.clientWidth,
+    height: gameArea.clientHeight,
+  };
 }
 
 function initAudio() {
-  if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioContext.state === "suspended") audioContext.resume();
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+
+  if (audioContext.state === "suspended") {
+    audioContext.resume();
+  }
 }
 
 function playClickSound({ startFrequency, endFrequency, duration, volume, waveType }) {
@@ -99,33 +127,56 @@ function playClickSound({ startFrequency, endFrequency, duration, volume, waveTy
 }
 
 function playFlashlightOnSound() {
-  playClickSound({ startFrequency: 920, endFrequency: 520, duration: 0.055, volume: 0.16, waveType: "square" });
+  playClickSound({
+    startFrequency: 920,
+    endFrequency: 520,
+    duration: 0.055,
+    volume: 0.16,
+    waveType: "square",
+  });
+
   setTimeout(() => {
-    playClickSound({ startFrequency: 640, endFrequency: 760, duration: 0.04, volume: 0.08, waveType: "triangle" });
+    playClickSound({
+      startFrequency: 640,
+      endFrequency: 760,
+      duration: 0.04,
+      volume: 0.08,
+      waveType: "triangle",
+    });
   }, 38);
 }
 
 function playFlashlightOffSound() {
-  playClickSound({ startFrequency: 360, endFrequency: 160, duration: 0.09, volume: 0.12, waveType: "triangle" });
+  playClickSound({
+    startFrequency: 360,
+    endFrequency: 160,
+    duration: 0.09,
+    volume: 0.12,
+    waveType: "triangle",
+  });
 }
 
 function playVictorySound() {
   if (!audioContext) return;
 
   const now = audioContext.currentTime;
-  [523.25, 659.25, 783.99].forEach((freq, index) => {
+  const notes = [523.25, 659.25, 783.99];
+
+  notes.forEach((freq, index) => {
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();
     const startTime = now + index * 0.15;
 
     osc.type = "triangle";
     osc.frequency.setValueAtTime(freq, startTime);
+
     gain.gain.setValueAtTime(0.0001, startTime);
     gain.gain.exponentialRampToValueAtTime(0.18, startTime + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.25);
 
     osc.connect(gain);
     gain.connect(audioContext.destination);
+
     osc.start(startTime);
     osc.stop(startTime + 0.3);
   });
@@ -141,11 +192,13 @@ function playDefeatSound() {
   osc.type = "sawtooth";
   osc.frequency.setValueAtTime(320, now);
   osc.frequency.exponentialRampToValueAtTime(90, now + 0.8);
+
   gain.gain.setValueAtTime(0.18, now);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
 
   osc.connect(gain);
   gain.connect(audioContext.destination);
+
   osc.start(now);
   osc.stop(now + 0.8);
 }
@@ -163,12 +216,14 @@ function startAmbientMusic() {
 
     osc.type = index === 0 ? "sine" : "triangle";
     osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+
     filter.type = "lowpass";
     filter.frequency.setValueAtTime(260, audioContext.currentTime);
 
     osc.connect(filter);
     filter.connect(ambientGain);
     osc.start();
+
     return osc;
   });
 
@@ -178,6 +233,7 @@ function startAmbientMusic() {
 
 function pauseAmbientMusic() {
   if (!ambientGain || !isAmbientPlaying) return;
+
   ambientGain.gain.cancelScheduledValues(audioContext.currentTime);
   ambientGain.gain.setValueAtTime(ambientGain.gain.value, audioContext.currentTime);
   ambientGain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.25);
@@ -185,6 +241,7 @@ function pauseAmbientMusic() {
 
 function resumeAmbientMusic() {
   if (!ambientGain || !isAmbientPlaying || !isRunning) return;
+
   ambientGain.gain.cancelScheduledValues(audioContext.currentTime);
   ambientGain.gain.setValueAtTime(0.0001, audioContext.currentTime);
   ambientGain.gain.exponentialRampToValueAtTime(AMBIENT_VOLUME, audioContext.currentTime + 0.8);
@@ -200,7 +257,9 @@ function stopAmbientMusic() {
     } catch (error) {}
   });
 
-  if (ambientGain) ambientGain.disconnect();
+  if (ambientGain) {
+    ambientGain.disconnect();
+  }
 
   ambientOscillators = [];
   ambientGain = null;
@@ -211,7 +270,13 @@ function applyLevelVisuals() {
   const visualLevel = getLevelData(currentLevel).visualLevel;
 
   gameArea.classList.remove("level-1", "level-2", "level-3", "level-4", "level-5");
-  monsterEl.classList.remove("monster-level-1", "monster-level-2", "monster-level-3", "monster-level-4", "monster-level-5");
+  monsterEl.classList.remove(
+    "monster-level-1",
+    "monster-level-2",
+    "monster-level-3",
+    "monster-level-4",
+    "monster-level-5"
+  );
 
   gameArea.classList.add(`level-${visualLevel}`);
   monsterEl.classList.add(`monster-level-${visualLevel}`);
@@ -253,8 +318,6 @@ function resetLevel() {
   monster.x = width * 0.55;
   monster.y = height * 0.45;
   monster.speed = levelData.monsterSpeed;
-  monsterStuckTime = 0;
-  monsterDetour = null;
 
   exit.x = width - 80;
   exit.y = 70;
@@ -285,14 +348,16 @@ function createObstacles() {
   let attempts = 0;
 
   while (attempts < 80) {
-    attempts++;
+    attempts += 1;
     obstacles = [];
 
     let tryCount = 0;
+
     while (obstacles.length < levelData.obstacleCount && tryCount < 500) {
-      tryCount++;
+      tryCount += 1;
 
       const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+
       const obstacle = {
         x: randomRange(120, width - 120),
         y: randomRange(110, height - 110),
@@ -301,10 +366,14 @@ function createObstacles() {
         className: type.className,
       };
 
-      if (canPlaceObstacle(obstacle)) obstacles.push(obstacle);
+      if (canPlaceObstacle(obstacle)) {
+        obstacles.push(obstacle);
+      }
     }
 
-    if (obstacles.length === levelData.obstacleCount && isMapPlayable()) break;
+    if (obstacles.length === levelData.obstacleCount && isMapPlayable()) {
+      break;
+    }
   }
 
   obstacleLayer.innerHTML = "";
@@ -327,10 +396,14 @@ function canPlaceObstacle(obstacle) {
     { x: monster.x, y: monster.y, radius: 150 },
   ];
 
-  if (safeZones.some((zone) => Math.hypot(obstacle.x - zone.x, obstacle.y - zone.y) < zone.radius)) return false;
+  const inSafeZone = safeZones.some((zone) => {
+    return Math.hypot(obstacle.x - zone.x, obstacle.y - zone.y) < zone.radius;
+  });
 
-  return !obstacles.some((other) =>
-    rectsOverlap(
+  if (inSafeZone) return false;
+
+  return !obstacles.some((other) => {
+    return rectsOverlap(
       obstacle.x,
       obstacle.y,
       obstacle.width + 50,
@@ -339,8 +412,8 @@ function canPlaceObstacle(obstacle) {
       other.y,
       other.width,
       other.height
-    )
-  );
+    );
+  });
 }
 
 function isMapPlayable() {
@@ -366,19 +439,33 @@ function hasGridPath(startX, startY, targetX, targetY) {
 
   const queue = [start];
   const visited = new Set([`${start.x},${start.y}`]);
-  const directions = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
+  const directions = [
+    { x: 1, y: 0 },
+    { x: -1, y: 0 },
+    { x: 0, y: 1 },
+    { x: 0, y: -1 },
+  ];
 
   while (queue.length > 0) {
     const current = queue.shift();
-    if (current.x === target.x && current.y === target.y) return true;
+
+    if (current.x === target.x && current.y === target.y) {
+      return true;
+    }
 
     directions.forEach((dir) => {
-      const next = { x: current.x + dir.x, y: current.y + dir.y };
+      const next = {
+        x: current.x + dir.x,
+        y: current.y + dir.y,
+      };
+
       const key = `${next.x},${next.y}`;
 
       if (
-        next.x >= 0 && next.x < cols &&
-        next.y >= 0 && next.y < rows &&
+        next.x >= 0 &&
+        next.x < cols &&
+        next.y >= 0 &&
+        next.y < rows &&
         !visited.has(key) &&
         !isPointBlocked(next.x * gridSize + gridSize / 2, next.y * gridSize + gridSize / 2, 26)
       ) {
@@ -398,16 +485,21 @@ function endGame(title, description, statusText) {
 
   totalPlayTime += playTime;
 
-  if (isFlashlightOn) playFlashlightOffSound();
+  if (isFlashlightOn) {
+    playFlashlightOffSound();
+  }
 
   keys.clear();
   isFlashlightOn = false;
   wasFlashlightOn = false;
-  monsterDetour = null;
-  monsterStuckTime = 0;
 
-  if (statusText === "승리") playVictorySound();
-  if (statusText === "패배") playDefeatSound();
+  if (statusText === "승리") {
+    playVictorySound();
+  }
+
+  if (statusText === "패배") {
+    playDefeatSound();
+  }
 
   gameStatus.textContent = statusText;
 
@@ -436,6 +528,7 @@ function showLevelClearMessage(description) {
   `;
 
   messageEl.classList.remove("hidden");
+
   document.getElementById("nextLevelBtn").addEventListener("click", startNextLevel);
   document.getElementById("restartBtn").addEventListener("click", () => startGame(mode));
 }
@@ -461,6 +554,7 @@ function showFinalMessage(title, description, statusText) {
   `;
 
   messageEl.classList.remove("hidden");
+
   document.getElementById("restartBtn").addEventListener("click", () => startGame(mode));
   document.getElementById("saveRankBtn").addEventListener("click", () => saveCurrentRank(statusText));
 }
@@ -498,6 +592,7 @@ function getRankings() {
 
 function saveRanking(record) {
   const rankings = getRankings();
+
   rankings.push(record);
 
   rankings.sort((a, b) => {
@@ -569,11 +664,17 @@ function updatePlayer(delta) {
 
   const { width, height } = getGameSize();
   const radius = player.size / 2;
+
   const nextX = clamp(player.x + dx * player.speed * delta, radius, width - radius);
   const nextY = clamp(player.y + dy * player.speed * delta, radius, height - radius);
 
-  if (!isCircleTouchingObstacles(nextX, player.y, radius)) player.x = nextX;
-  if (!isCircleTouchingObstacles(player.x, nextY, radius)) player.y = nextY;
+  if (!isCircleTouchingObstacles(nextX, player.y, radius)) {
+    player.x = nextX;
+  }
+
+  if (!isCircleTouchingObstacles(player.x, nextY, radius)) {
+    player.y = nextY;
+  }
 }
 
 function updateFlashlight(delta) {
@@ -593,7 +694,10 @@ function updateFlashlight(delta) {
 
   wasFlashlightOn = isFlashlightOn;
 
-  battery += isFlashlightOn ? -levelData.batteryDrain * delta : levelData.batteryCharge * delta;
+  battery += isFlashlightOn
+    ? -levelData.batteryDrain * delta
+    : levelData.batteryCharge * delta;
+
   battery = clamp(battery, 0, 100);
 
   if (battery <= 0) {
@@ -605,113 +709,50 @@ function updateMonster(delta) {
   const stunned = isMonsterInLight();
   monsterEl.classList.toggle("stunned", stunned);
 
-  if (stunned) {
-    monsterDetour = null;
-    monsterStuckTime = 0;
-    return;
-  }
-
-  const beforeX = monster.x;
-  const beforeY = monster.y;
+  if (stunned) return;
 
   moveMonsterSafely(delta);
-
-  const movedDistance = Math.hypot(monster.x - beforeX, monster.y - beforeY);
-  monsterStuckTime = movedDistance < 0.2 ? monsterStuckTime + delta : 0;
-
-  if (monsterStuckTime > 0.45) {
-    monsterDetour = findMonsterDetourPoint();
-    monsterStuckTime = 0;
-  }
-
-  if (monsterDetour && Math.hypot(monster.x - monsterDetour.x, monster.y - monsterDetour.y) < 34) {
-    monsterDetour = null;
-  }
 }
 
 function moveMonsterSafely(delta) {
   const { width, height } = getGameSize();
   const radius = getMonsterHitRadius();
-  const target = monsterDetour || player;
 
-  const dx = target.x - monster.x;
-  const dy = target.y - monster.y;
+  const dx = player.x - monster.x;
+  const dy = player.y - monster.y;
   const distance = Math.hypot(dx, dy);
 
   if (distance <= 0) return;
 
-  const maxStep = Math.min(monster.speed * delta, 7);
-  const baseAngle = Math.atan2(dy, dx);
+  const step = monster.speed * delta;
+  const dirX = dx / distance;
+  const dirY = dy / distance;
 
-  const angleOffsets = [
-    0,
-    Math.PI / 8,
-    -Math.PI / 8,
-    Math.PI / 4,
-    -Math.PI / 4,
-    Math.PI / 2,
-    -Math.PI / 2,
-  ];
+  const nextX = clamp(monster.x + dirX * step, radius, width - radius);
+  const nextY = clamp(monster.y + dirY * step, radius, height - radius);
 
-  let bestMove = null;
-  let bestScore = Infinity;
-
-  angleOffsets.forEach((offset) => {
-    const angle = baseAngle + offset;
-
-    const nextX = clamp(
-      monster.x + Math.cos(angle) * maxStep,
-      radius,
-      width - radius
-    );
-
-    const nextY = clamp(
-      monster.y + Math.sin(angle) * maxStep,
-      radius,
-      height - radius
-    );
-
-    if (isCircleTouchingObstacles(nextX, nextY, radius)) return;
-
-    const score = Math.hypot(nextX - target.x, nextY - target.y);
-
-    if (score < bestScore) {
-      bestScore = score;
-      bestMove = { x: nextX, y: nextY };
-    }
-  });
-
-  if (bestMove) {
-    monster.x = bestMove.x;
-    monster.y = bestMove.y;
-  }
-}
-
-function findMonsterDetourPoint() {
-  const { width, height } = getGameSize();
-  const radius = getMonsterHitRadius();
-  const points = [];
-
-  for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
-    const point = {
-      x: clamp(monster.x + Math.cos(angle) * 140, radius, width - radius),
-      y: clamp(monster.y + Math.sin(angle) * 140, radius, height - radius),
-    };
-
-    if (!isCircleTouchingObstacles(point.x, point.y, radius)) {
-      points.push(point);
-    }
+  if (!isCircleTouchingObstacles(nextX, nextY, radius)) {
+    monster.x = nextX;
+    monster.y = nextY;
+    return;
   }
 
-  if (points.length === 0) return null;
+  const blockedX = isCircleTouchingObstacles(nextX, monster.y, radius);
+  const blockedY = isCircleTouchingObstacles(monster.x, nextY, radius);
 
-  points.sort((a, b) => {
-    const aDistance = Math.hypot(a.x - player.x, a.y - player.y);
-    const bDistance = Math.hypot(b.x - player.x, b.y - player.y);
-    return aDistance - bDistance;
-  });
-
-  return points[0];
+  if (Math.abs(dx) > Math.abs(dy)) {
+    if (!blockedX) {
+      monster.x = nextX;
+    } else if (!blockedY) {
+      monster.y = nextY;
+    }
+  } else {
+    if (!blockedY) {
+      monster.y = nextY;
+    } else if (!blockedX) {
+      monster.x = nextX;
+    }
+  }
 }
 
 function isMonsterInLight() {
@@ -722,13 +763,18 @@ function isMonsterInLight() {
   const vy = monster.y - player.y;
   const distance = Math.hypot(vx, vy);
 
+  if (distance <= 0) return true;
   if (distance > levelData.lightRange) return false;
 
   const dirLength = Math.hypot(player.lastDirX, player.lastDirY);
+  if (dirLength <= 0) return false;
+
   const lightX = player.lastDirX / dirLength;
   const lightY = player.lastDirY / dirLength;
+
   const monsterX = vx / distance;
   const monsterY = vy / distance;
+
   const dot = lightX * monsterX + lightY * monsterY;
 
   return dot > 0.45;
@@ -742,8 +788,9 @@ function checkCollision() {
     return;
   }
 
-  const isInExit = Math.abs(player.x - exit.x) < exit.width / 2 &&
-                   Math.abs(player.y - exit.y) < exit.height / 2;
+  const isInExit =
+    Math.abs(player.x - exit.x) < exit.width / 2 &&
+    Math.abs(player.y - exit.y) < exit.height / 2;
 
   if (isInExit) {
     if (mode === "normal" && currentLevel >= MAX_LEVEL) {
@@ -759,8 +806,10 @@ function updateRender() {
 
   playerEl.style.left = `${player.x}px`;
   playerEl.style.top = `${player.y}px`;
+
   monsterEl.style.left = `${monster.x}px`;
   monsterEl.style.top = `${monster.y}px`;
+
   exitEl.style.left = `${exit.x}px`;
   exitEl.style.top = `${exit.y}px`;
 
@@ -774,29 +823,37 @@ function updateRender() {
 }
 
 function isCircleTouchingObstacles(circleX, circleY, radius) {
-  return obstacles.some((obstacle) => isCircleTouchingRect(circleX, circleY, radius, obstacle));
+  return obstacles.some((obstacle) => {
+    return isCircleTouchingRect(circleX, circleY, radius, obstacle);
+  });
 }
 
 function isCircleTouchingRect(circleX, circleY, radius, rect) {
   const closestX = clamp(circleX, rect.x - rect.width / 2, rect.x + rect.width / 2);
   const closestY = clamp(circleY, rect.y - rect.height / 2, rect.y + rect.height / 2);
+
   const distanceX = circleX - closestX;
   const distanceY = circleY - closestY;
+
   return distanceX * distanceX + distanceY * distanceY < radius * radius;
 }
 
 function isPointBlocked(x, y, padding) {
-  return obstacles.some((obstacle) =>
-    x > obstacle.x - obstacle.width / 2 - padding &&
-    x < obstacle.x + obstacle.width / 2 + padding &&
-    y > obstacle.y - obstacle.height / 2 - padding &&
-    y < obstacle.y + obstacle.height / 2 + padding
-  );
+  return obstacles.some((obstacle) => {
+    return (
+      x > obstacle.x - obstacle.width / 2 - padding &&
+      x < obstacle.x + obstacle.width / 2 + padding &&
+      y > obstacle.y - obstacle.height / 2 - padding &&
+      y < obstacle.y + obstacle.height / 2 + padding
+    );
+  });
 }
 
 function rectsOverlap(x1, y1, w1, h1, x2, y2, w2, h2) {
-  return Math.abs(x1 - x2) < (w1 + w2) / 2 &&
-         Math.abs(y1 - y2) < (h1 + h2) / 2;
+  return (
+    Math.abs(x1 - x2) < (w1 + w2) / 2 &&
+    Math.abs(y1 - y2) < (h1 + h2) / 2
+  );
 }
 
 function getMonsterHitRadius() {
@@ -817,6 +874,7 @@ window.addEventListener("keydown", (event) => {
   }
 
   if (!isRunning && event.code === "Space") return;
+
   keys.add(event.code);
 });
 
