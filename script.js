@@ -47,7 +47,7 @@ let monsterStuckTime = 0;
 let monsterDetour = null;
 
 function getLevelData(level) {
-  const endlessBonus = mode === "endless" ? Math.max(0, level - 1) : 0;
+  const endlessBonus = mode === "endless" ? Math.max(0, level - 1) : Math.min(level - 1, MAX_LEVEL - 1);
   const visualLevel = ((level - 1) % 5) + 1;
 
   return {
@@ -403,6 +403,8 @@ function endGame(title, description, statusText) {
   keys.clear();
   isFlashlightOn = false;
   wasFlashlightOn = false;
+  monsterDetour = null;
+  monsterStuckTime = 0;
 
   if (statusText === "승리") playVictorySound();
   if (statusText === "패배") playDefeatSound();
@@ -602,61 +604,86 @@ function updateFlashlight(delta) {
 function updateMonster(delta) {
   const stunned = isMonsterInLight();
   monsterEl.classList.toggle("stunned", stunned);
-  if (stunned) return;
 
-  const target = monsterDetour || player;
+  if (stunned) {
+    monsterDetour = null;
+    monsterStuckTime = 0;
+    return;
+  }
+
   const beforeX = monster.x;
   const beforeY = monster.y;
 
-  moveMonsterToward(target.x, target.y, delta);
+  moveMonsterSafely(delta);
 
   const movedDistance = Math.hypot(monster.x - beforeX, monster.y - beforeY);
-  monsterStuckTime = movedDistance < 0.5 ? monsterStuckTime + delta : 0;
+  monsterStuckTime = movedDistance < 0.2 ? monsterStuckTime + delta : 0;
 
-  if (monsterStuckTime > 0.35) {
+  if (monsterStuckTime > 0.45) {
     monsterDetour = findMonsterDetourPoint();
     monsterStuckTime = 0;
   }
 
-  if (monsterDetour && Math.hypot(monster.x - monsterDetour.x, monster.y - monsterDetour.y) < 28) {
+  if (monsterDetour && Math.hypot(monster.x - monsterDetour.x, monster.y - monsterDetour.y) < 34) {
     monsterDetour = null;
   }
 }
 
-function moveMonsterToward(targetX, targetY, delta) {
-  const dx = targetX - monster.x;
-  const dy = targetY - monster.y;
+function moveMonsterSafely(delta) {
+  const { width, height } = getGameSize();
+  const radius = getMonsterHitRadius();
+  const target = monsterDetour || player;
+
+  const dx = target.x - monster.x;
+  const dy = target.y - monster.y;
   const distance = Math.hypot(dx, dy);
+
   if (distance <= 0) return;
 
-  const speed = monster.speed * delta;
-  const dirX = dx / distance;
-  const dirY = dy / distance;
+  const maxStep = Math.min(monster.speed * delta, 7);
+  const baseAngle = Math.atan2(dy, dx);
 
-  const candidates = [
-    { x: monster.x + dirX * speed, y: monster.y + dirY * speed },
-    { x: monster.x + dirX * speed, y: monster.y },
-    { x: monster.x, y: monster.y + dirY * speed },
-    { x: monster.x - dirY * speed, y: monster.y + dirX * speed },
-    { x: monster.x + dirY * speed, y: monster.y - dirX * speed },
+  const angleOffsets = [
+    0,
+    Math.PI / 8,
+    -Math.PI / 8,
+    Math.PI / 4,
+    -Math.PI / 4,
+    Math.PI / 2,
+    -Math.PI / 2,
   ];
 
-  let best = null;
-  let bestDistance = Infinity;
+  let bestMove = null;
+  let bestScore = Infinity;
 
-  candidates.forEach((candidate) => {
-    if (!isCircleTouchingObstacles(candidate.x, candidate.y, getMonsterHitRadius())) {
-      const targetDistance = Math.hypot(candidate.x - targetX, candidate.y - targetY);
-      if (targetDistance < bestDistance) {
-        best = candidate;
-        bestDistance = targetDistance;
-      }
+  angleOffsets.forEach((offset) => {
+    const angle = baseAngle + offset;
+
+    const nextX = clamp(
+      monster.x + Math.cos(angle) * maxStep,
+      radius,
+      width - radius
+    );
+
+    const nextY = clamp(
+      monster.y + Math.sin(angle) * maxStep,
+      radius,
+      height - radius
+    );
+
+    if (isCircleTouchingObstacles(nextX, nextY, radius)) return;
+
+    const score = Math.hypot(nextX - target.x, nextY - target.y);
+
+    if (score < bestScore) {
+      bestScore = score;
+      bestMove = { x: nextX, y: nextY };
     }
   });
 
-  if (best) {
-    monster.x = best.x;
-    monster.y = best.y;
+  if (bestMove) {
+    monster.x = bestMove.x;
+    monster.y = bestMove.y;
   }
 }
 
@@ -665,18 +692,26 @@ function findMonsterDetourPoint() {
   const radius = getMonsterHitRadius();
   const points = [];
 
-  for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 6) {
-    points.push({
-      x: clamp(monster.x + Math.cos(angle) * 120, radius, width - radius),
-      y: clamp(monster.y + Math.sin(angle) * 120, radius, height - radius),
-    });
+  for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
+    const point = {
+      x: clamp(monster.x + Math.cos(angle) * 140, radius, width - radius),
+      y: clamp(monster.y + Math.sin(angle) * 140, radius, height - radius),
+    };
+
+    if (!isCircleTouchingObstacles(point.x, point.y, radius)) {
+      points.push(point);
+    }
   }
 
-  const validPoints = points.filter((point) => !isCircleTouchingObstacles(point.x, point.y, radius));
-  if (validPoints.length === 0) return null;
+  if (points.length === 0) return null;
 
-  validPoints.sort((a, b) => Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(b.x - player.x, b.y - player.y));
-  return validPoints[0];
+  points.sort((a, b) => {
+    const aDistance = Math.hypot(a.x - player.x, a.y - player.y);
+    const bDistance = Math.hypot(b.x - player.x, b.y - player.y);
+    return aDistance - bDistance;
+  });
+
+  return points[0];
 }
 
 function isMonsterInLight() {
