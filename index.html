@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>빛을 보면 죽는 괴물</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="game-wrap">
+    <section class="title-area">
+      <p class="eyebrow">WEB MINI GAME</p>
+      <h1>빛을 보면 죽는 괴물</h1>
+      <p class="desc">
+        괴물에게 잡히기 전에 출구로 탈출하세요. 손전등을 켜면 괴물은 멈추지만, 배터리는 빠르게 줄어듭니다.
+      </p>
+    </section>
+
+    <section class="hud">
+      <div class="hud-card">
+        <span>상태</span>
+        <strong id="gameStatus">대기 중</strong>
+      </div>
+      <div class="hud-card">
+        <span>배터리</span>
+        <div class="battery-bar">
+          <div id="batteryFill"></div>
+        </div>
+      </div>
+      <div class="hud-card">
+        <span>시간</span>
+        <strong id="timeText">0.0초</strong>
+      </div>
+    </section>
+
+    <section class="game-area" id="gameArea">
+      <div class="exit" id="exit">EXIT</div>
+      <div class="player" id="player"></div>
+      <div class="monster" id="monster"></div>
+      <div class="flashlight" id="flashlight"></div>
+      <div class="message" id="message">
+        <h2>출구까지 도망쳐!</h2>
+        <p>WASD 또는 방향키로 이동 / Space로 손전등 켜기</p>
+        <button id="startBtn">게임 시작</button>
+      </div>
+    </section>
+
+    <section class="guide">
+      <h2>조작 방법</h2>
+      <ul>
+        <li><b>이동:</b> 방향키 또는 WASD</li>
+        <li><b>손전등:</b> Space 누르고 있기</li>
+        <li><b>승리:</b> 출구 도달</li>
+        <li><b>패배:</b> 괴물에게 잡힘 또는 배터리 완전 소진</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
