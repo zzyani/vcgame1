@@ -12,6 +12,30 @@ const timeText = document.getElementById("timeText");
 const keys = new Set();
 const RANKING_KEY = "lightMonsterRanking";
 
+const levels = {
+  1: {
+    name: "1단계",
+    monsterSpeed: 120,
+    batteryDrain: 22,
+    batteryCharge: 7,
+    lightRange: 230,
+  },
+  2: {
+    name: "2단계",
+    monsterSpeed: 155,
+    batteryDrain: 30,
+    batteryCharge: 5,
+    lightRange: 200,
+  },
+  3: {
+    name: "3단계",
+    monsterSpeed: 190,
+    batteryDrain: 38,
+    batteryCharge: 3,
+    lightRange: 170,
+  },
+};
+
 const player = {
   x: 80,
   y: 80,
@@ -35,12 +59,14 @@ const exit = {
   height: 56,
 };
 
+let currentLevel = 1;
 let battery = 100;
 let isFlashlightOn = false;
 let wasFlashlightOn = false;
 let isRunning = false;
 let lastTime = 0;
 let playTime = 0;
+let totalPlayTime = 0;
 let animationId = null;
 let audioContext = null;
 
@@ -165,8 +191,9 @@ function playClickSound({ startFrequency, endFrequency, duration, volume, waveTy
   oscillator.stop(now + duration + 0.02);
 }
 
-function resetGame() {
+function resetLevel() {
   const { width, height } = getGameSize();
+  const levelData = levels[currentLevel];
 
   player.x = 70;
   player.y = height - 70;
@@ -175,6 +202,7 @@ function resetGame() {
 
   monster.x = width * 0.55;
   monster.y = height * 0.45;
+  monster.speed = levelData.monsterSpeed;
 
   exit.x = width - 80;
   exit.y = 70;
@@ -186,22 +214,42 @@ function resetGame() {
   isRunning = true;
   lastTime = performance.now();
 
-  gameStatus.textContent = "탈출 중";
+  gameStatus.textContent = `${levelData.name} 진행 중`;
   messageEl.classList.add("hidden");
   monsterEl.classList.remove("stunned");
+
   updateRender();
 }
 
 function startGame() {
   initAudio();
   cancelAnimationFrame(animationId);
-  resetGame();
+
+  currentLevel = 1;
+  totalPlayTime = 0;
+
+  resetLevel();
   animationId = requestAnimationFrame(gameLoop);
+}
+
+function startNextLevel() {
+  currentLevel += 1;
+  resetLevel();
+  animationId = requestAnimationFrame(gameLoop);
+}
+
+function clearKeyState() {
+  keys.clear();
+  isFlashlightOn = false;
+  wasFlashlightOn = false;
 }
 
 function endGame(title, description, statusText) {
   isRunning = false;
   cancelAnimationFrame(animationId);
+  clearKeyState();
+
+  totalPlayTime += playTime;
 
   if (isFlashlightOn) {
     isFlashlightOn = false;
@@ -219,9 +267,26 @@ function endGame(title, description, statusText) {
 
   gameStatus.textContent = statusText;
 
+  if (statusText === "승리" && currentLevel < 3) {
+    messageEl.innerHTML = `
+      <h2>${currentLevel}단계 클리어!</h2>
+      <p>${description}</p>
+      <p>다음 단계에서는 괴물이 더 빨라지고, 손전등 배터리 소모가 증가합니다.</p>
+      <button id="nextLevelBtn">다음 단계로</button>
+      <button id="restartBtn">처음부터 다시</button>
+    `;
+    messageEl.classList.remove("hidden");
+
+    document.getElementById("nextLevelBtn").addEventListener("click", startNextLevel);
+    document.getElementById("restartBtn").addEventListener("click", startGame);
+    return;
+  }
+
   messageEl.innerHTML = `
     <h2>${title}</h2>
     <p>${description}</p>
+    <p>도달 단계: ${currentLevel}단계</p>
+    <p>총 플레이 시간: ${totalPlayTime.toFixed(1)}초</p>
 
     <div style="margin-top: 16px;">
       <input 
@@ -263,8 +328,9 @@ function endGame(title, description, statusText) {
     saveRanking({
       nickname,
       result: statusText,
-      time: Number(playTime.toFixed(1)),
-      date: new Date().toLocaleString(),
+      level: currentLevel,
+      time: Number(totalPlayTime.toFixed(1)),
+      date: Date.now(),
     });
 
     document.getElementById("rankingBoard").innerHTML = getRankingHTML();
@@ -288,11 +354,15 @@ function saveRanking(record) {
     if (a.result === "승리" && b.result !== "승리") return -1;
     if (a.result !== "승리" && b.result === "승리") return 1;
 
+    if (a.level !== b.level) {
+      return b.level - a.level;
+    }
+
     if (a.result === "승리" && b.result === "승리") {
       return a.time - b.time;
     }
 
-    return new Date(b.date) - new Date(a.date);
+    return b.date - a.date;
   });
 
   const top10 = rankings.slice(0, 10);
@@ -311,7 +381,8 @@ function getRankingHTML() {
 
   const rankingItems = rankings
     .map((rank, index) => {
-      const resultIcon = rank.result === "승리" ? "탈출" : "실패";
+      const resultText = rank.result === "승리" ? "전체 탈출" : "실패";
+      const levelText = `${rank.level || 1}단계`;
 
       return `
         <li style="
@@ -323,7 +394,7 @@ function getRankingHTML() {
           font-size: 14px;
         ">
           <span>${index + 1}. ${rank.nickname}</span>
-          <span>${resultIcon} / ${rank.time}초</span>
+          <span>${resultText} / ${levelText} / ${rank.time}초</span>
         </li>
       `;
     })
@@ -381,6 +452,8 @@ function updatePlayer(delta) {
 }
 
 function updateFlashlight(delta) {
+  const levelData = levels[currentLevel];
+
   isFlashlightOn = keys.has("Space") && battery > 0;
 
   if (isFlashlightOn && !wasFlashlightOn) {
@@ -394,9 +467,9 @@ function updateFlashlight(delta) {
   wasFlashlightOn = isFlashlightOn;
 
   if (isFlashlightOn) {
-    battery -= 22 * delta;
+    battery -= levelData.batteryDrain * delta;
   } else {
-    battery += 7 * delta;
+    battery += levelData.batteryCharge * delta;
   }
 
   battery = clamp(battery, 0, 100);
@@ -425,11 +498,13 @@ function updateMonster(delta) {
 function isMonsterInLight() {
   if (!isFlashlightOn) return false;
 
+  const levelData = levels[currentLevel];
+
   const vx = monster.x - player.x;
   const vy = monster.y - player.y;
   const distance = Math.hypot(vx, vy);
 
-  if (distance > 230) return false;
+  if (distance > levelData.lightRange) return false;
 
   const dirLength = Math.hypot(player.lastDirX, player.lastDirY);
   const lightX = player.lastDirX / dirLength;
@@ -443,6 +518,7 @@ function isMonsterInLight() {
 
 function checkCollision() {
   const monsterDistance = Math.hypot(player.x - monster.x, player.y - monster.y);
+
   if (monsterDistance < (player.size + monster.size) / 2) {
     endGame("괴물에게 잡혔다", "손전등 타이밍이 조금 늦었습니다.", "패배");
     return;
@@ -453,7 +529,11 @@ function checkCollision() {
     Math.abs(player.y - exit.y) < exit.height / 2;
 
   if (isInExit) {
-    endGame("탈출 성공!", `${playTime.toFixed(1)}초 만에 출구에 도착했습니다.`, "승리");
+    if (currentLevel < 3) {
+      endGame("단계 클리어!", `${playTime.toFixed(1)}초 만에 출구에 도착했습니다.`, "승리");
+    } else {
+      endGame("최종 탈출 성공!", `${totalPlayTime.toFixed(1)}초 만에 모든 단계를 클리어했습니다.`, "승리");
+    }
   }
 }
 
@@ -475,7 +555,7 @@ function updateRender() {
   flashlightEl.classList.toggle("on", isFlashlightOn);
 
   batteryFill.style.width = `${battery}%`;
-  timeText.textContent = `${playTime.toFixed(1)}초`;
+  timeText.textContent = `${levels[currentLevel].name} / ${playTime.toFixed(1)}초`;
 }
 
 function clamp(value, min, max) {
