@@ -64,6 +64,9 @@ let playTime = 0;
 let totalPlayTime = 0;
 let animationId = null;
 let audioContext = null;
+let ambientOscillators = [];
+let ambientGain = null;
+let isAmbientPlaying = false;
 let monsterStuckTime = 0;
 let monsterDetour = null;
 
@@ -186,6 +189,71 @@ function playClickSound({ startFrequency, endFrequency, duration, volume, waveTy
 
   oscillator.start(now);
   oscillator.stop(now + duration + 0.02);
+}
+
+function startAmbientMusic() {
+  if (!audioContext || isAmbientPlaying) return;
+
+  ambientGain = audioContext.createGain();
+  ambientGain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+  ambientGain.gain.exponentialRampToValueAtTime(0.045, audioContext.currentTime + 1.2);
+
+  const frequencies = [55, 82.41, 110];
+
+  ambientOscillators = frequencies.map((freq, index) => {
+    const osc = audioContext.createOscillator();
+    const filter = audioContext.createBiquadFilter();
+
+    osc.type = index === 0 ? "sine" : "triangle";
+    osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(260, audioContext.currentTime);
+
+    osc.connect(filter);
+    filter.connect(ambientGain);
+    osc.start();
+
+    return osc;
+  });
+
+  ambientGain.connect(audioContext.destination);
+  isAmbientPlaying = true;
+}
+
+function pauseAmbientMusic() {
+  if (!ambientGain || !isAmbientPlaying) return;
+
+  ambientGain.gain.cancelScheduledValues(audioContext.currentTime);
+  ambientGain.gain.setValueAtTime(ambientGain.gain.value, audioContext.currentTime);
+  ambientGain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.25);
+}
+
+function resumeAmbientMusic() {
+  if (!ambientGain || !isAmbientPlaying || !isRunning) return;
+
+  ambientGain.gain.cancelScheduledValues(audioContext.currentTime);
+  ambientGain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+  ambientGain.gain.exponentialRampToValueAtTime(0.045, audioContext.currentTime + 0.8);
+}
+
+function stopAmbientMusic() {
+  if (!isAmbientPlaying) return;
+
+  ambientOscillators.forEach((osc) => {
+    try {
+      osc.stop();
+      osc.disconnect();
+    } catch (error) {}
+  });
+
+  if (ambientGain) {
+    ambientGain.disconnect();
+  }
+
+  ambientOscillators = [];
+  ambientGain = null;
+  isAmbientPlaying = false;
 }
 
 function applyLevelVisuals() {
@@ -381,6 +449,8 @@ function hasGridPath(startX, startY, targetX, targetY) {
 
 function startGame() {
   initAudio();
+  stopAmbientMusic();
+  startAmbientMusic();
   cancelAnimationFrame(animationId);
 
   currentLevel = 1;
@@ -405,6 +475,7 @@ function clearKeyState() {
 function endGame(title, description, statusText) {
   isRunning = false;
   cancelAnimationFrame(animationId);
+  stopAmbientMusic();
 
   totalPlayTime += playTime;
 
@@ -603,8 +674,15 @@ function updateFlashlight(delta) {
 
   isFlashlightOn = keys.has("Space") && battery > 0;
 
-  if (isFlashlightOn && !wasFlashlightOn) playFlashlightOnSound();
-  if (!isFlashlightOn && wasFlashlightOn) playFlashlightOffSound();
+  if (isFlashlightOn && !wasFlashlightOn) {
+    playFlashlightOnSound();
+    pauseAmbientMusic();
+  }
+
+  if (!isFlashlightOn && wasFlashlightOn) {
+    playFlashlightOffSound();
+    resumeAmbientMusic();
+  }
 
   wasFlashlightOn = isFlashlightOn;
 
