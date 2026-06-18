@@ -36,16 +36,85 @@ const exit = {
 
 let battery = 100;
 let isFlashlightOn = false;
+let wasFlashlightOn = false;
 let isRunning = false;
 let lastTime = 0;
 let playTime = 0;
 let animationId = null;
+let audioContext = null;
 
 function getGameSize() {
   return {
     width: gameArea.clientWidth,
     height: gameArea.clientHeight,
   };
+}
+
+function initAudio() {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+
+  if (audioContext.state === "suspended") {
+    audioContext.resume();
+  }
+}
+
+function playFlashlightOnSound() {
+  playClickSound({
+    startFrequency: 920,
+    endFrequency: 520,
+    duration: 0.055,
+    volume: 0.16,
+    waveType: "square",
+  });
+
+  setTimeout(() => {
+    playClickSound({
+      startFrequency: 640,
+      endFrequency: 760,
+      duration: 0.04,
+      volume: 0.08,
+      waveType: "triangle",
+    });
+  }, 38);
+}
+
+function playFlashlightOffSound() {
+  playClickSound({
+    startFrequency: 360,
+    endFrequency: 160,
+    duration: 0.09,
+    volume: 0.12,
+    waveType: "triangle",
+  });
+}
+
+function playClickSound({ startFrequency, endFrequency, duration, volume, waveType }) {
+  if (!audioContext) return;
+
+  const now = audioContext.currentTime;
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  const filter = audioContext.createBiquadFilter();
+
+  oscillator.type = waveType;
+  oscillator.frequency.setValueAtTime(startFrequency, now);
+  oscillator.frequency.exponentialRampToValueAtTime(endFrequency, now + duration);
+
+  filter.type = "highpass";
+  filter.frequency.setValueAtTime(120, now);
+
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(volume, now + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+  oscillator.connect(filter);
+  filter.connect(gain);
+  gain.connect(audioContext.destination);
+
+  oscillator.start(now);
+  oscillator.stop(now + duration + 0.02);
 }
 
 function resetGame() {
@@ -65,6 +134,7 @@ function resetGame() {
   battery = 100;
   playTime = 0;
   isFlashlightOn = false;
+  wasFlashlightOn = false;
   isRunning = true;
   lastTime = performance.now();
 
@@ -75,6 +145,7 @@ function resetGame() {
 }
 
 function startGame() {
+  initAudio();
   cancelAnimationFrame(animationId);
   resetGame();
   animationId = requestAnimationFrame(gameLoop);
@@ -83,6 +154,12 @@ function startGame() {
 function endGame(title, description, statusText) {
   isRunning = false;
   cancelAnimationFrame(animationId);
+
+  if (isFlashlightOn) {
+    isFlashlightOn = false;
+    wasFlashlightOn = false;
+    playFlashlightOffSound();
+  }
 
   gameStatus.textContent = statusText;
   messageEl.innerHTML = `
@@ -139,6 +216,16 @@ function updatePlayer(delta) {
 
 function updateFlashlight(delta) {
   isFlashlightOn = keys.has("Space") && battery > 0;
+
+  if (isFlashlightOn && !wasFlashlightOn) {
+    playFlashlightOnSound();
+  }
+
+  if (!isFlashlightOn && wasFlashlightOn) {
+    playFlashlightOffSound();
+  }
+
+  wasFlashlightOn = isFlashlightOn;
 
   if (isFlashlightOn) {
     battery -= 22 * delta;
@@ -233,6 +320,9 @@ window.addEventListener("keydown", (event) => {
   if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"].includes(event.code)) {
     event.preventDefault();
   }
+
+  if (!isRunning && event.code === "Space") return;
+
   keys.add(event.code);
 });
 
