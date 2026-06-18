@@ -4,8 +4,6 @@ const monsterEl = document.getElementById("monster");
 const exitEl = document.getElementById("exit");
 const flashlightEl = document.getElementById("flashlight");
 const messageEl = document.getElementById("message");
-const startBtn = document.getElementById("startBtn");
-const endlessBtn = document.getElementById("endlessBtn");
 const gameStatus = document.getElementById("gameStatus");
 const batteryFill = document.getElementById("batteryFill");
 const timeText = document.getElementById("timeText");
@@ -291,6 +289,54 @@ function applyLevelVisuals() {
   monsterEl.classList.add(`monster-level-${visualLevel}`);
 }
 
+function showTitleScreen() {
+  isRunning = false;
+  cancelAnimationFrame(animationId);
+  stopAmbientMusic();
+
+  keys.clear();
+
+  mode = "normal";
+  currentLevel = 1;
+  battery = 100;
+  playTime = 0;
+  totalPlayTime = 0;
+  isFlashlightOn = false;
+  wasFlashlightOn = false;
+
+  gameStatus.textContent = "대기 중";
+  timeText.textContent = "0.0초";
+  batteryFill.style.width = "100%";
+
+  obstacleLayer.innerHTML = "";
+  obstacles = [];
+
+  applyLevelVisuals();
+  updateRender();
+
+  messageEl.innerHTML = `
+    <h2>출구까지 도망쳐!</h2>
+    <p>일반모드는 5단계 클리어, 무한모드는 가능한 오래 버티며 계속 탈출합니다.</p>
+    <div class="title-buttons">
+      <button id="startBtn">일반모드 시작</button>
+      <button id="endlessBtn">무한모드 시작</button>
+    </div>
+  `;
+
+  messageEl.classList.remove("hidden");
+
+  const newStartBtn = document.getElementById("startBtn");
+  const newEndlessBtn = document.getElementById("endlessBtn");
+
+  if (newStartBtn) {
+    newStartBtn.addEventListener("click", () => startGame("normal"));
+  }
+
+  if (newEndlessBtn) {
+    newEndlessBtn.addEventListener("click", () => startGame("endless"));
+  }
+}
+
 function startGame(selectedMode = "normal") {
   initAudio();
   stopAmbientMusic();
@@ -559,12 +605,16 @@ function showFinalMessage(title, description, statusText) {
       ${getRankingHTML()}
     </div>
 
-    <button id="restartBtn" class="restart-bottom">다시 시작</button>
+    <div class="end-button-wrap">
+      <button id="restartBtn">다시 시작</button>
+      <button id="backTitleBtn">돌아가기</button>
+    </div>
   `;
 
   messageEl.classList.remove("hidden");
 
   document.getElementById("restartBtn").addEventListener("click", () => startGame(mode));
+  document.getElementById("backTitleBtn").addEventListener("click", showTitleScreen);
   document.getElementById("saveRankBtn").addEventListener("click", () => saveCurrentRank(statusText));
 }
 
@@ -609,7 +659,7 @@ function saveRanking(record) {
     if (a.mode !== "endless" && b.mode === "endless") return 1;
     if (a.result === "승리" && b.result !== "승리") return -1;
     if (a.result !== "승리" && b.result === "승리") return 1;
-    if (a.level !== b.level) return b.level - a.level;
+    if ((a.level || 1) !== (b.level || 1)) return (b.level || 1) - (a.level || 1);
     return a.time - b.time;
   });
 
@@ -626,11 +676,13 @@ function getRankingHTML() {
   const items = rankings.map((rank, index) => {
     const modeText = rank.mode === "endless" ? "무한" : "일반";
     const resultText = rank.result === "승리" ? "탈출" : "실패";
+    const levelText = rank.level || 1;
+    const timeTextValue = typeof rank.time === "number" ? rank.time : 0;
 
     return `
       <li>
         <span>${index + 1}. ${rank.nickname}</span>
-        <span>${modeText} / ${resultText} / ${rank.level}단계 / ${rank.time}초</span>
+        <span>${modeText} / ${resultText} / ${levelText}단계 / ${timeTextValue}초</span>
       </li>
     `;
   }).join("");
@@ -907,14 +959,5 @@ window.addEventListener("resize", () => {
   updateRender();
 });
 
-if (startBtn) {
-  startBtn.addEventListener("click", () => startGame("normal"));
-}
-
-if (endlessBtn) {
-  endlessBtn.addEventListener("click", () => startGame("endless"));
-}
-
 initGameElementStyles();
-applyLevelVisuals();
-updateRender();
+showTitleScreen();
