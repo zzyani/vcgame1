@@ -2,9 +2,591 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>빛을 보면 죽는 괴물</title>
-  <link rel="stylesheet" href="style.css" />
+  <style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Arial, sans-serif;
+  color: #f6f2ff;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(126, 89, 255, 0.28), transparent 30%),
+    radial-gradient(circle at 80% 20%, rgba(255, 207, 88, 0.16), transparent 26%),
+    #070711;
+}
+
+.game-wrap {
+  width: min(980px, 94vw);
+  margin: 0 auto;
+  padding: 34px 0;
+}
+
+.title-area {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #ffc94d;
+  letter-spacing: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(34px, 6vw, 62px);
+  line-height: 1;
+}
+
+.desc {
+  max-width: 660px;
+  margin: 14px auto 0;
+  color: #c8c4d8;
+  line-height: 1.6;
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.hud-card {
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+.hud-card span {
+  display: block;
+  margin-bottom: 8px;
+  color: #aaa4bd;
+  font-size: 13px;
+}
+
+.hud-card strong {
+  font-size: 20px;
+}
+
+.battery-bar {
+  width: 100%;
+  height: 18px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+#batteryFill {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #fff06a, #ff9f43);
+  transition: width 0.12s linear;
+}
+
+.game-area {
+  position: relative;
+  height: min(620px, 68vh);
+  min-height: 430px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  border-radius: 28px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  transition: background 0.6s ease;
+  touch-action: none;
+}
+
+.mobile-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: none;
+  pointer-events: none;
+}
+
+.joystick,
+.flashlight-button {
+  position: absolute;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+}
+
+.joystick {
+  left: max(22px, env(safe-area-inset-left));
+  width: 120px;
+  height: 120px;
+  border: 2px solid rgba(255, 255, 255, 0.32);
+  border-radius: 50%;
+  background: rgba(10, 10, 22, 0.5);
+  box-shadow: inset 0 0 28px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(5px);
+}
+
+.joystick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.42);
+  transform: translate(-50%, -50%);
+}
+
+.flashlight-button {
+  right: max(22px, env(safe-area-inset-right));
+  width: 92px;
+  height: 92px;
+  padding: 0;
+  border: 2px solid rgba(255, 240, 106, 0.65);
+  border-radius: 20px;
+  color: #17131f;
+  font-size: 17px;
+  background: linear-gradient(135deg, #fff06a, #ffb45c);
+}
+
+.flashlight-button.active {
+  transform: scale(0.94);
+  filter: brightness(1.2);
+  box-shadow: 0 0 30px rgba(255, 240, 106, 0.7);
+}
+
+.game-area.level-1 {
+  background:
+    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px),
+    radial-gradient(circle at 30% 30%, #171329, #060711 75%);
+  background-size: 40px 40px, 40px 40px, cover;
+}
+
+.game-area.level-2 {
+  background:
+    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px),
+    radial-gradient(circle at 70% 25%, #2c163d, #070711 75%);
+  background-size: 40px 40px, 40px 40px, cover;
+}
+
+.game-area.level-3 {
+  background:
+    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px),
+    radial-gradient(circle at 50% 20%, #3a0b1f, #030409 78%);
+  background-size: 40px 40px, 40px 40px, cover;
+}
+
+.game-area.level-4 {
+  background:
+    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px),
+    radial-gradient(circle at 25% 75%, #173947, #030409 80%);
+  background-size: 40px 40px, 40px 40px, cover;
+}
+
+.game-area.level-5 {
+  background:
+    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px),
+    radial-gradient(circle at 50% 50%, #431010, #010207 82%);
+  background-size: 40px 40px, 40px 40px, cover;
+}
+
+.player,
+.monster,
+.exit,
+.obstacle {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.player {
+  width: 30px;
+  height: 30px;
+  z-index: 6;
+  border-radius: 50%;
+  background: #f9f5ff;
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.95);
+}
+
+.player::after {
+  content: "";
+  position: absolute;
+  inset: 8px 3px 8px 21px;
+  border-radius: 999px;
+  background: #ffc94d;
+}
+
+.monster {
+  width: 42px;
+  height: 42px;
+  z-index: 5;
+  border: 2px solid #ff4d88;
+  transition:
+    background 0.4s ease,
+    box-shadow 0.4s ease,
+    border-radius 0.4s ease,
+    width 0.4s ease,
+    height 0.4s ease,
+    filter 0.12s linear;
+}
+
+.monster-level-1 {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #2cff8f;
+  box-shadow: 0 0 24px rgba(44,255,143,.55);
+}
+
+.monster-level-2 {
+  width: 50px;
+  height: 50px;
+  border-radius: 36% 64% 42% 58%;
+  background: #b95cff;
+  box-shadow: 0 0 32px rgba(185,92,255,.75);
+}
+
+.monster-level-3 {
+  width: 57px;
+  height: 57px;
+  border-radius: 24% 76% 28% 72%;
+  background: #ff315d;
+  box-shadow: 0 0 42px rgba(255,49,93,.9);
+}
+
+.monster-level-4 {
+  width: 63px;
+  height: 63px;
+  border-radius: 18% 82% 35% 65%;
+  background: #36d7ff;
+  box-shadow: 0 0 48px rgba(54,215,255,.9);
+}
+
+.monster-level-5 {
+  width: 70px;
+  height: 70px;
+  border-radius: 12% 88% 20% 80%;
+  background: #ff1414;
+  box-shadow: 0 0 58px rgba(255,20,20,1);
+}
+
+.monster::before,
+.monster::after {
+  content: "";
+  position: absolute;
+  top: 13px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffeb3b;
+}
+
+.monster::before {
+  left: 10px;
+}
+
+.monster::after {
+  right: 10px;
+}
+
+.monster.stunned {
+  filter: brightness(1.8);
+  animation: shake 0.12s infinite alternate;
+}
+
+.exit {
+  width: 96px;
+  height: 56px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: #101018;
+  font-weight: 800;
+  background: linear-gradient(135deg, #b7ff64, #4dffca);
+  box-shadow: 0 0 26px rgba(77, 255, 202, 0.45);
+}
+
+.flashlight {
+  position: absolute;
+  z-index: 3;
+  width: 230px;
+  height: 150px;
+  transform-origin: 0 50%;
+  clip-path: polygon(0 42%, 100% 0, 100% 100%, 0 58%);
+  background: linear-gradient(90deg, rgba(255, 246, 145, 0.65), rgba(255, 246, 145, 0.03));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.08s linear;
+}
+
+.flashlight.on {
+  opacity: 1;
+}
+
+#obstacleLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.obstacle {
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    inset 0 0 18px rgba(0,0,0,.45),
+    0 0 18px rgba(255,255,255,.08);
+}
+
+.obstacle-rock {
+  border-radius: 38% 62% 45% 55%;
+  background: linear-gradient(135deg, #3a3a4f, #171724);
+}
+
+.obstacle-crystal {
+  border-radius: 14px 40px 18px 46px;
+  background: linear-gradient(135deg, #4df2ff, #27315f);
+  box-shadow: 0 0 24px rgba(77,242,255,.22);
+}
+
+.obstacle-pillar {
+  border-radius: 999px;
+  background: linear-gradient(180deg, #56516c, #1c1a2a);
+}
+
+.obstacle-wall {
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2b2638, #11111d);
+}
+
+.obstacle-spike {
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+  background: linear-gradient(135deg, #ff8a4d, #3a1111);
+}
+
+.message {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  padding: 24px;
+  background: rgba(7, 7, 17, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.message.hidden {
+  display: none;
+}
+
+.message h2 {
+  margin: 0 0 10px;
+  font-size: 36px;
+}
+
+.message p {
+  margin: 0 0 22px;
+  color: #d8d3e8;
+}
+
+button {
+  cursor: pointer;
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 26px;
+  color: #17131f;
+  font-size: 16px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #fff06a, #ff95c8);
+  box-shadow: 0 10px 28px rgba(255, 149, 200, 0.25);
+}
+
+.title-buttons,
+.level-button-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.end-button-wrap {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.rank-form {
+  margin-top: 16px;
+}
+
+.rank-form input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: none;
+  outline: none;
+  margin-right: 6px;
+}
+
+.ranking-board {
+  margin-top: 18px;
+  text-align: left;
+}
+
+.ranking-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ranking-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+  font-size: 14px;
+}
+
+.guide {
+  margin-top: 18px;
+  padding: 18px 22px;
+  border-radius: 22px;
+  background: rgba(255,255,255,.07);
+}
+
+.guide h2 {
+  margin: 0 0 10px;
+}
+
+.guide ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #d8d3e8;
+  line-height: 1.8;
+}
+
+@keyframes shake {
+  from {
+    transform: translate(-50%, -50%) rotate(-3deg);
+  }
+
+  to {
+    transform: translate(-50%, -50%) rotate(3deg);
+  }
+}
+
+@media (max-width: 720px) {
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .game-wrap {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    padding: 0;
+  }
+
+  .title-area,
+  .guide {
+    display: none;
+  }
+
+  .hud {
+    position: fixed;
+    top: max(8px, env(safe-area-inset-top));
+    left: 8px;
+    right: 8px;
+    z-index: 30;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin: 0;
+    pointer-events: none;
+  }
+
+  .hud-card {
+    min-width: 0;
+    padding: 8px 9px;
+    border-radius: 12px;
+  }
+
+  .hud-card span {
+    margin-bottom: 4px;
+    font-size: 10px;
+  }
+
+  .hud-card strong {
+    display: block;
+    overflow: hidden;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .battery-bar {
+    height: 12px;
+  }
+
+  .game-area {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .mobile-controls {
+    display: block;
+  }
+
+  .message {
+    padding: 80px 20px 150px;
+    overflow-y: auto;
+  }
+
+  .message h2 {
+    font-size: clamp(26px, 8vw, 36px);
+  }
+
+  .rank-form input {
+    width: 100%;
+    margin: 0 0 10px;
+  }
+
+  .end-button-wrap {
+    flex-direction: column;
+  }
+}
+
+@media (pointer: coarse) {
+  .mobile-controls {
+    display: block;
+  }
+}
+
+  </style>
 </head>
 <body>
   <main class="game-wrap">
@@ -42,6 +624,13 @@
       <div class="flashlight" id="flashlight"></div>
       <div id="obstacleLayer"></div>
 
+      <div class="mobile-controls" aria-label="모바일 조작">
+        <div class="joystick" id="joystick" aria-label="이동 조이스틱">
+          <div class="joystick-knob" id="joystickKnob"></div>
+        </div>
+        <button class="flashlight-button" id="flashlightButton" type="button">손전등</button>
+      </div>
+
       <div class="message" id="message">
         <h2>출구까지 도망쳐!</h2>
         <p>일반모드는 5단계 클리어, 무한모드는 가능한 오래 버티며 계속 탈출합니다.</p>
@@ -64,6 +653,1061 @@
     </section>
   </main>
 
-  <script src="script.js"></script>
+  <script>
+const gameArea = document.getElementById("gameArea");
+const playerEl = document.getElementById("player");
+const monsterEl = document.getElementById("monster");
+const exitEl = document.getElementById("exit");
+const flashlightEl = document.getElementById("flashlight");
+const messageEl = document.getElementById("message");
+const gameStatus = document.getElementById("gameStatus");
+const batteryFill = document.getElementById("batteryFill");
+const timeText = document.getElementById("timeText");
+const obstacleLayer = document.getElementById("obstacleLayer");
+const joystickEl = document.getElementById("joystick");
+const joystickKnobEl = document.getElementById("joystickKnob");
+const flashlightButtonEl = document.getElementById("flashlightButton");
+
+const keys = new Set();
+const touchInput = { x: 0, y: 0 };
+let joystickPointerId = null;
+let flashlightPointerId = null;
+let isFlashlightButtonPressed = false;
+const RANKING_KEY = "lightMonsterRanking";
+const AMBIENT_VOLUME = 0.12;
+const MAX_LEVEL = 5;
+
+const obstacleTypes = [
+  { className: "obstacle-rock", width: 64, height: 58 },
+  { className: "obstacle-crystal", width: 48, height: 76 },
+  { className: "obstacle-pillar", width: 42, height: 92 },
+  { className: "obstacle-wall", width: 110, height: 34 },
+  { className: "obstacle-spike", width: 60, height: 62 },
+];
+
+const player = {
+  x: 80,
+  y: 80,
+  size: 30,
+  speed: 240,
+  lastDirX: 1,
+  lastDirY: 0,
+};
+
+const monster = {
+  x: 520,
+  y: 320,
+  size: 42,
+  speed: 120,
+};
+
+const exit = {
+  x: 0,
+  y: 0,
+  width: 96,
+  height: 56,
+};
+
+let mode = "normal";
+let currentLevel = 1;
+let obstacles = [];
+let battery = 100;
+let isFlashlightOn = false;
+let wasFlashlightOn = false;
+let isRunning = false;
+let lastTime = 0;
+let playTime = 0;
+let totalPlayTime = 0;
+let animationId = null;
+let audioContext = null;
+let ambientOscillators = [];
+let ambientGain = null;
+let isAmbientPlaying = false;
+
+function getLevelData(level) {
+  const endlessBonus = mode === "endless"
+    ? Math.max(0, level - 1)
+    : Math.min(level - 1, MAX_LEVEL - 1);
+
+  const visualLevel = ((level - 1) % 5) + 1;
+
+  return {
+    name: `${level}단계`,
+    visualLevel,
+    monsterSpeed: 110 + endlessBonus * 14,
+    batteryDrain: Math.min(22 + endlessBonus * 4, 65),
+    batteryCharge: Math.max(7 - endlessBonus * 0.5, 2),
+    lightRange: Math.max(230 - endlessBonus * 8, 120),
+    monsterScale: 1,
+    obstacleCount: Math.min(1 + endlessBonus, 10),
+  };
+}
+
+function getGameSize() {
+  return {
+    width: gameArea.clientWidth,
+    height: gameArea.clientHeight,
+  };
+}
+
+function initGameElementStyles() {
+  monsterEl.style.transition =
+    "background 0.4s ease, box-shadow 0.4s ease, border-radius 0.4s ease, width 0.4s ease, height 0.4s ease, filter 0.12s linear";
+
+  playerEl.style.transition = "none";
+  exitEl.style.transition = "none";
+  flashlightEl.style.transition = "opacity 0.08s linear";
+}
+
+function initAudio() {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+
+  if (audioContext.state === "suspended") {
+    audioContext.resume();
+  }
+}
+
+function playClickSound({ startFrequency, endFrequency, duration, volume, waveType }) {
+  if (!audioContext) return;
+
+  const now = audioContext.currentTime;
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  const filter = audioContext.createBiquadFilter();
+
+  oscillator.type = waveType;
+  oscillator.frequency.setValueAtTime(startFrequency, now);
+  oscillator.frequency.exponentialRampToValueAtTime(endFrequency, now + duration);
+
+  filter.type = "highpass";
+  filter.frequency.setValueAtTime(120, now);
+
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(volume, now + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+  oscillator.connect(filter);
+  filter.connect(gain);
+  gain.connect(audioContext.destination);
+
+  oscillator.start(now);
+  oscillator.stop(now + duration + 0.02);
+}
+
+function playFlashlightOnSound() {
+  playClickSound({
+    startFrequency: 920,
+    endFrequency: 520,
+    duration: 0.055,
+    volume: 0.16,
+    waveType: "square",
+  });
+
+  setTimeout(() => {
+    playClickSound({
+      startFrequency: 640,
+      endFrequency: 760,
+      duration: 0.04,
+      volume: 0.08,
+      waveType: "triangle",
+    });
+  }, 38);
+}
+
+function playFlashlightOffSound() {
+  playClickSound({
+    startFrequency: 360,
+    endFrequency: 160,
+    duration: 0.09,
+    volume: 0.12,
+    waveType: "triangle",
+  });
+}
+
+function playVictorySound() {
+  if (!audioContext) return;
+
+  const now = audioContext.currentTime;
+  const notes = [523.25, 659.25, 783.99];
+
+  notes.forEach((freq, index) => {
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const startTime = now + index * 0.15;
+
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(freq, startTime);
+
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.18, startTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.25);
+
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+
+    osc.start(startTime);
+    osc.stop(startTime + 0.3);
+  });
+}
+
+function playDefeatSound() {
+  if (!audioContext) return;
+
+  const now = audioContext.currentTime;
+  const osc = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(320, now);
+  osc.frequency.exponentialRampToValueAtTime(90, now + 0.8);
+
+  gain.gain.setValueAtTime(0.18, now);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+
+  osc.connect(gain);
+  gain.connect(audioContext.destination);
+
+  osc.start(now);
+  osc.stop(now + 0.8);
+}
+
+function startAmbientMusic() {
+  if (!audioContext || isAmbientPlaying) return;
+
+  ambientGain = audioContext.createGain();
+  ambientGain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+  ambientGain.gain.exponentialRampToValueAtTime(AMBIENT_VOLUME, audioContext.currentTime + 1.2);
+
+  ambientOscillators = [55, 82.41, 110].map((freq, index) => {
+    const osc = audioContext.createOscillator();
+    const filter = audioContext.createBiquadFilter();
+
+    osc.type = index === 0 ? "sine" : "triangle";
+    osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(260, audioContext.currentTime);
+
+    osc.connect(filter);
+    filter.connect(ambientGain);
+    osc.start();
+
+    return osc;
+  });
+
+  ambientGain.connect(audioContext.destination);
+  isAmbientPlaying = true;
+}
+
+function pauseAmbientMusic() {
+  if (!ambientGain || !isAmbientPlaying) return;
+
+  ambientGain.gain.cancelScheduledValues(audioContext.currentTime);
+  ambientGain.gain.setValueAtTime(ambientGain.gain.value, audioContext.currentTime);
+  ambientGain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.25);
+}
+
+function resumeAmbientMusic() {
+  if (!ambientGain || !isAmbientPlaying || !isRunning) return;
+
+  ambientGain.gain.cancelScheduledValues(audioContext.currentTime);
+  ambientGain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+  ambientGain.gain.exponentialRampToValueAtTime(AMBIENT_VOLUME, audioContext.currentTime + 0.8);
+}
+
+function stopAmbientMusic() {
+  if (!isAmbientPlaying) return;
+
+  ambientOscillators.forEach((osc) => {
+    try {
+      osc.stop();
+      osc.disconnect();
+    } catch (error) {}
+  });
+
+  if (ambientGain) {
+    ambientGain.disconnect();
+  }
+
+  ambientOscillators = [];
+  ambientGain = null;
+  isAmbientPlaying = false;
+}
+
+function applyLevelVisuals() {
+  const visualLevel = getLevelData(currentLevel).visualLevel;
+
+  gameArea.classList.remove("level-1", "level-2", "level-3", "level-4", "level-5");
+  monsterEl.classList.remove(
+    "monster-level-1",
+    "monster-level-2",
+    "monster-level-3",
+    "monster-level-4",
+    "monster-level-5"
+  );
+
+  gameArea.classList.add(`level-${visualLevel}`);
+  monsterEl.classList.add(`monster-level-${visualLevel}`);
+}
+
+function showTitleScreen() {
+  isRunning = false;
+  cancelAnimationFrame(animationId);
+  stopAmbientMusic();
+
+  keys.clear();
+  resetMobileInput();
+
+  mode = "normal";
+  currentLevel = 1;
+  battery = 100;
+  playTime = 0;
+  totalPlayTime = 0;
+  isFlashlightOn = false;
+  wasFlashlightOn = false;
+
+  gameStatus.textContent = "대기 중";
+  timeText.textContent = "0.0초";
+  batteryFill.style.width = "100%";
+
+  obstacleLayer.innerHTML = "";
+  obstacles = [];
+
+  applyLevelVisuals();
+  updateRender();
+
+  messageEl.innerHTML = `
+    <h2>출구까지 도망쳐!</h2>
+    <p>일반모드는 5단계 클리어, 무한모드는 가능한 오래 버티며 계속 탈출합니다.</p>
+    <div class="title-buttons">
+      <button id="startBtn">일반모드 시작</button>
+      <button id="endlessBtn">무한모드 시작</button>
+    </div>
+  `;
+
+  messageEl.classList.remove("hidden");
+
+  const newStartBtn = document.getElementById("startBtn");
+  const newEndlessBtn = document.getElementById("endlessBtn");
+
+  if (newStartBtn) {
+    newStartBtn.addEventListener("click", () => startGame("normal"));
+  }
+
+  if (newEndlessBtn) {
+    newEndlessBtn.addEventListener("click", () => startGame("endless"));
+  }
+}
+
+function startGame(selectedMode = "normal") {
+  initAudio();
+  stopAmbientMusic();
+  startAmbientMusic();
+  cancelAnimationFrame(animationId);
+
+  mode = selectedMode;
+  currentLevel = 1;
+  totalPlayTime = 0;
+
+  resetLevel();
+  animationId = requestAnimationFrame(gameLoop);
+}
+
+function startNextLevel() {
+  initAudio();
+  stopAmbientMusic();
+  startAmbientMusic();
+
+  currentLevel += 1;
+  resetLevel();
+  animationId = requestAnimationFrame(gameLoop);
+}
+
+function resetLevel() {
+  const { width, height } = getGameSize();
+  const levelData = getLevelData(currentLevel);
+
+  player.x = 70;
+  player.y = height - 70;
+  player.lastDirX = 1;
+  player.lastDirY = 0;
+
+  monster.x = width * 0.55;
+  monster.y = height * 0.45;
+  monster.speed = levelData.monsterSpeed;
+
+  exit.x = width - 80;
+  exit.y = 70;
+
+  battery = 100;
+  playTime = 0;
+  isFlashlightOn = false;
+  wasFlashlightOn = false;
+  resetMobileInput();
+  isRunning = true;
+  lastTime = performance.now();
+
+  gameStatus.textContent = `${mode === "endless" ? "무한모드" : "일반모드"} / ${levelData.name}`;
+  messageEl.classList.add("hidden");
+  monsterEl.classList.remove("stunned");
+
+  applyLevelVisuals();
+  createObstacles();
+  updateRender();
+}
+
+function createObstacles() {
+  const { width, height } = getGameSize();
+  const levelData = getLevelData(currentLevel);
+
+  obstacles = [];
+  obstacleLayer.innerHTML = "";
+
+  let attempts = 0;
+
+  while (attempts < 80) {
+    attempts += 1;
+    obstacles = [];
+
+    let tryCount = 0;
+
+    while (obstacles.length < levelData.obstacleCount && tryCount < 500) {
+      tryCount += 1;
+
+      const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+
+      const obstacle = {
+        x: randomRange(120, width - 120),
+        y: randomRange(110, height - 110),
+        width: type.width,
+        height: type.height,
+        className: type.className,
+      };
+
+      if (canPlaceObstacle(obstacle)) {
+        obstacles.push(obstacle);
+      }
+    }
+
+    if (obstacles.length === levelData.obstacleCount && isMapPlayable()) {
+      break;
+    }
+  }
+
+  obstacleLayer.innerHTML = "";
+
+  obstacles.forEach((obstacle) => {
+    const el = document.createElement("div");
+    el.className = `obstacle ${obstacle.className}`;
+    el.style.left = `${obstacle.x}px`;
+    el.style.top = `${obstacle.y}px`;
+    el.style.width = `${obstacle.width}px`;
+    el.style.height = `${obstacle.height}px`;
+    obstacleLayer.appendChild(el);
+  });
+}
+
+function canPlaceObstacle(obstacle) {
+  const safeZones = [
+    { x: player.x, y: player.y, radius: 140 },
+    { x: exit.x, y: exit.y, radius: 140 },
+    { x: monster.x, y: monster.y, radius: 150 },
+  ];
+
+  const inSafeZone = safeZones.some((zone) => {
+    return Math.hypot(obstacle.x - zone.x, obstacle.y - zone.y) < zone.radius;
+  });
+
+  if (inSafeZone) return false;
+
+  return !obstacles.some((other) => {
+    return rectsOverlap(
+      obstacle.x,
+      obstacle.y,
+      obstacle.width + 50,
+      obstacle.height + 50,
+      other.x,
+      other.y,
+      other.width,
+      other.height
+    );
+  });
+}
+
+function isMapPlayable() {
+  return hasGridPath(monster.x, monster.y, player.x, player.y) &&
+         hasGridPath(player.x, player.y, exit.x, exit.y);
+}
+
+function hasGridPath(startX, startY, targetX, targetY) {
+  const { width, height } = getGameSize();
+  const gridSize = 40;
+  const cols = Math.floor(width / gridSize);
+  const rows = Math.floor(height / gridSize);
+
+  const start = {
+    x: clamp(Math.floor(startX / gridSize), 0, cols - 1),
+    y: clamp(Math.floor(startY / gridSize), 0, rows - 1),
+  };
+
+  const target = {
+    x: clamp(Math.floor(targetX / gridSize), 0, cols - 1),
+    y: clamp(Math.floor(targetY / gridSize), 0, rows - 1),
+  };
+
+  const queue = [start];
+  const visited = new Set([`${start.x},${start.y}`]);
+  const directions = [
+    { x: 1, y: 0 },
+    { x: -1, y: 0 },
+    { x: 0, y: 1 },
+    { x: 0, y: -1 },
+  ];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+
+    if (current.x === target.x && current.y === target.y) {
+      return true;
+    }
+
+    directions.forEach((dir) => {
+      const next = {
+        x: current.x + dir.x,
+        y: current.y + dir.y,
+      };
+
+      const key = `${next.x},${next.y}`;
+
+      if (
+        next.x >= 0 &&
+        next.x < cols &&
+        next.y >= 0 &&
+        next.y < rows &&
+        !visited.has(key) &&
+        !isPointBlocked(next.x * gridSize + gridSize / 2, next.y * gridSize + gridSize / 2, 26)
+      ) {
+        visited.add(key);
+        queue.push(next);
+      }
+    });
+  }
+
+  return false;
+}
+
+function endGame(title, description, statusText) {
+  isRunning = false;
+  cancelAnimationFrame(animationId);
+  stopAmbientMusic();
+
+  totalPlayTime += playTime;
+
+  if (isFlashlightOn) {
+    playFlashlightOffSound();
+  }
+
+  keys.clear();
+  resetMobileInput();
+  isFlashlightOn = false;
+  wasFlashlightOn = false;
+
+  if (statusText === "승리") {
+    playVictorySound();
+  }
+
+  if (statusText === "패배") {
+    playDefeatSound();
+  }
+
+  gameStatus.textContent = statusText;
+
+  if (statusText === "승리" && shouldContinueToNextLevel()) {
+    showLevelClearMessage(description);
+    return;
+  }
+
+  showFinalMessage(title, description, statusText);
+}
+
+function shouldContinueToNextLevel() {
+  if (mode === "endless") return true;
+  return currentLevel < MAX_LEVEL;
+}
+
+function showLevelClearMessage(description) {
+  messageEl.innerHTML = `
+    <h2>${currentLevel}단계 클리어!</h2>
+    <p>${description}</p>
+    <p>${mode === "endless" ? "무한모드는 다음 단계에서 더 빨라지고 더 복잡해집니다." : "다음 단계에서는 괴물이 더 빨라지고 장애물이 증가합니다."}</p>
+    <div class="level-button-wrap">
+      <button id="nextLevelBtn">다음 단계로</button>
+      <button id="restartBtn">처음부터 다시</button>
+    </div>
+  `;
+
+  messageEl.classList.remove("hidden");
+
+  document.getElementById("nextLevelBtn").addEventListener("click", startNextLevel);
+  document.getElementById("restartBtn").addEventListener("click", () => startGame(mode));
+}
+
+function showFinalMessage(title, description, statusText) {
+  messageEl.innerHTML = `
+    <h2>${title}</h2>
+    <p>${description}</p>
+    <p>모드: ${mode === "endless" ? "무한모드" : "일반모드"}</p>
+    <p>도달 단계: ${currentLevel}단계</p>
+    <p>총 플레이 시간: ${totalPlayTime.toFixed(1)}초</p>
+
+    <div class="rank-form">
+      <input id="nicknameInput" type="text" maxlength="10" placeholder="닉네임 입력" />
+      <button id="saveRankBtn">기록 남기기</button>
+    </div>
+
+    <div id="rankingBoard" class="ranking-board">
+      ${getRankingHTML()}
+    </div>
+
+    <div class="end-button-wrap">
+      <button id="restartBtn">다시 시작</button>
+      <button id="backTitleBtn">돌아가기</button>
+    </div>
+  `;
+
+  messageEl.classList.remove("hidden");
+
+  document.getElementById("restartBtn").addEventListener("click", () => startGame(mode));
+  document.getElementById("backTitleBtn").addEventListener("click", showTitleScreen);
+  document.getElementById("saveRankBtn").addEventListener("click", () => saveCurrentRank(statusText));
+}
+
+function saveCurrentRank(statusText) {
+  const nicknameInput = document.getElementById("nicknameInput");
+  const nickname = nicknameInput.value.trim();
+
+  if (!nickname) {
+    alert("닉네임을 입력해주세요.");
+    return;
+  }
+
+  saveRanking({
+    nickname,
+    mode,
+    result: statusText,
+    level: currentLevel,
+    time: Number(totalPlayTime.toFixed(1)),
+    date: Date.now(),
+  });
+
+  document.getElementById("rankingBoard").innerHTML = getRankingHTML();
+  nicknameInput.disabled = true;
+
+  const saveRankBtn = document.getElementById("saveRankBtn");
+  saveRankBtn.disabled = true;
+  saveRankBtn.textContent = "기록 완료";
+}
+
+function getRankings() {
+  const saved = localStorage.getItem(RANKING_KEY);
+  return saved ? JSON.parse(saved) : [];
+}
+
+function saveRanking(record) {
+  const rankings = getRankings();
+
+  rankings.push(record);
+
+  rankings.sort((a, b) => {
+    if (a.mode === "endless" && b.mode !== "endless") return -1;
+    if (a.mode !== "endless" && b.mode === "endless") return 1;
+    if (a.result === "승리" && b.result !== "승리") return -1;
+    if (a.result !== "승리" && b.result === "승리") return 1;
+    if ((a.level || 1) !== (b.level || 1)) return (b.level || 1) - (a.level || 1);
+    return a.time - b.time;
+  });
+
+  localStorage.setItem(RANKING_KEY, JSON.stringify(rankings.slice(0, 10)));
+}
+
+function getRankingHTML() {
+  const rankings = getRankings();
+
+  if (rankings.length === 0) {
+    return `<h3>랭킹 TOP 10</h3><p>아직 기록이 없습니다.</p>`;
+  }
+
+  const items = rankings.map((rank, index) => {
+    const modeText = rank.mode === "endless" ? "무한" : "일반";
+    const resultText = rank.result === "승리" ? "탈출" : "실패";
+    const levelText = rank.level || 1;
+    const timeTextValue = typeof rank.time === "number" ? rank.time : 0;
+
+    return `
+      <li>
+        <span>${index + 1}. ${rank.nickname}</span>
+        <span>${modeText} / ${resultText} / ${levelText}단계 / ${timeTextValue}초</span>
+      </li>
+    `;
+  }).join("");
+
+  return `<h3>랭킹 TOP 10</h3><ol class="ranking-list">${items}</ol>`;
+}
+
+function gameLoop(now) {
+  if (!isRunning) return;
+
+  const delta = Math.min((now - lastTime) / 1000, 1 / 60);
+  lastTime = now;
+  playTime += delta;
+
+  updatePlayer(delta);
+  updateFlashlight(delta);
+  updateMonster(delta);
+  checkCollision();
+  updateRender();
+
+  animationId = requestAnimationFrame(gameLoop);
+}
+
+function updatePlayer(delta) {
+  let dx = touchInput.x;
+  let dy = touchInput.y;
+
+  if (keys.has("ArrowLeft") || keys.has("KeyA")) dx--;
+  if (keys.has("ArrowRight") || keys.has("KeyD")) dx++;
+  if (keys.has("ArrowUp") || keys.has("KeyW")) dy--;
+  if (keys.has("ArrowDown") || keys.has("KeyS")) dy++;
+
+  if (dx !== 0 || dy !== 0) {
+    const length = Math.hypot(dx, dy);
+    dx /= length;
+    dy /= length;
+    player.lastDirX = dx;
+    player.lastDirY = dy;
+  }
+
+  const { width, height } = getGameSize();
+  const radius = player.size / 2;
+
+  const nextX = clamp(player.x + dx * player.speed * delta, radius, width - radius);
+  const nextY = clamp(player.y + dy * player.speed * delta, radius, height - radius);
+
+  if (!isCircleTouchingObstacles(nextX, player.y, radius)) {
+    player.x = nextX;
+  }
+
+  if (!isCircleTouchingObstacles(player.x, nextY, radius)) {
+    player.y = nextY;
+  }
+}
+
+function updateFlashlight(delta) {
+  const levelData = getLevelData(currentLevel);
+
+  isFlashlightOn = (keys.has("Space") || isFlashlightButtonPressed) && battery > 0;
+
+  if (isFlashlightOn && !wasFlashlightOn) {
+    playFlashlightOnSound();
+    pauseAmbientMusic();
+  }
+
+  if (!isFlashlightOn && wasFlashlightOn) {
+    playFlashlightOffSound();
+    resumeAmbientMusic();
+  }
+
+  wasFlashlightOn = isFlashlightOn;
+
+  battery += isFlashlightOn
+    ? -levelData.batteryDrain * delta
+    : levelData.batteryCharge * delta;
+
+  battery = clamp(battery, 0, 100);
+
+  if (battery <= 0) {
+    endGame("배터리 방전", "어둠이 완전히 삼켜버렸습니다.", "패배");
+  }
+}
+
+function updateMonster(delta) {
+  const stunned = isMonsterInLight();
+  monsterEl.classList.toggle("stunned", stunned);
+
+  if (stunned) return;
+
+  moveMonsterSafely(delta);
+}
+
+function moveMonsterSafely(delta) {
+  const { width, height } = getGameSize();
+  const radius = getMonsterHitRadius();
+
+  const dx = player.x - monster.x;
+  const dy = player.y - monster.y;
+  const distance = Math.hypot(dx, dy);
+
+  if (distance <= 0) return;
+
+  const levelData = getLevelData(currentLevel);
+  const step = levelData.monsterSpeed * delta;
+
+  const dirX = dx / distance;
+  const dirY = dy / distance;
+
+  const nextX = clamp(monster.x + dirX * step, radius, width - radius);
+  const nextY = clamp(monster.y + dirY * step, radius, height - radius);
+
+  if (!isCircleTouchingObstacles(nextX, nextY, radius)) {
+    monster.x = nextX;
+    monster.y = nextY;
+    return;
+  }
+
+  const canMoveX = !isCircleTouchingObstacles(nextX, monster.y, radius);
+  const canMoveY = !isCircleTouchingObstacles(monster.x, nextY, radius);
+
+  if (canMoveX && Math.abs(dx) >= Math.abs(dy)) {
+    monster.x = nextX;
+    return;
+  }
+
+  if (canMoveY) {
+    monster.y = nextY;
+    return;
+  }
+
+  if (canMoveX) {
+    monster.x = nextX;
+  }
+}
+
+function isMonsterInLight() {
+  if (!isFlashlightOn) return false;
+
+  const levelData = getLevelData(currentLevel);
+  const vx = monster.x - player.x;
+  const vy = monster.y - player.y;
+  const distance = Math.hypot(vx, vy);
+
+  if (distance <= 0) return true;
+  if (distance > levelData.lightRange) return false;
+
+  const dirLength = Math.hypot(player.lastDirX, player.lastDirY);
+  if (dirLength <= 0) return false;
+
+  const lightX = player.lastDirX / dirLength;
+  const lightY = player.lastDirY / dirLength;
+
+  const monsterX = vx / distance;
+  const monsterY = vy / distance;
+
+  const dot = lightX * monsterX + lightY * monsterY;
+
+  return dot > 0.45;
+}
+
+function checkCollision() {
+  const monsterDistance = Math.hypot(player.x - monster.x, player.y - monster.y);
+
+  if (monsterDistance < player.size / 2 + getMonsterHitRadius()) {
+    endGame("괴물에게 잡혔다", "손전등 타이밍이 조금 늦었습니다.", "패배");
+    return;
+  }
+
+  const isInExit =
+    Math.abs(player.x - exit.x) < exit.width / 2 &&
+    Math.abs(player.y - exit.y) < exit.height / 2;
+
+  if (isInExit) {
+    if (mode === "normal" && currentLevel >= MAX_LEVEL) {
+      endGame("최종 탈출 성공!", `${totalPlayTime.toFixed(1)}초 만에 모든 단계를 클리어했습니다.`, "승리");
+    } else {
+      endGame("단계 클리어!", `${playTime.toFixed(1)}초 만에 출구에 도착했습니다.`, "승리");
+    }
+  }
+}
+
+function updateRender() {
+  const angle = Math.atan2(player.lastDirY, player.lastDirX) * 180 / Math.PI;
+
+  playerEl.style.left = `${player.x}px`;
+  playerEl.style.top = `${player.y}px`;
+
+  monsterEl.style.left = `${monster.x}px`;
+  monsterEl.style.top = `${monster.y}px`;
+
+  exitEl.style.left = `${exit.x}px`;
+  exitEl.style.top = `${exit.y}px`;
+
+  flashlightEl.style.left = `${player.x}px`;
+  flashlightEl.style.top = `${player.y - 75}px`;
+  flashlightEl.style.transform = `rotate(${angle}deg)`;
+  flashlightEl.classList.toggle("on", isFlashlightOn);
+
+  batteryFill.style.width = `${battery}%`;
+  timeText.textContent = `${mode === "endless" ? "무한" : "일반"} / ${currentLevel}단계 / ${playTime.toFixed(1)}초`;
+}
+
+function isCircleTouchingObstacles(circleX, circleY, radius) {
+  return obstacles.some((obstacle) => {
+    return isCircleTouchingRect(circleX, circleY, radius, obstacle);
+  });
+}
+
+function isCircleTouchingRect(circleX, circleY, radius, rect) {
+  const closestX = clamp(circleX, rect.x - rect.width / 2, rect.x + rect.width / 2);
+  const closestY = clamp(circleY, rect.y - rect.height / 2, rect.y + rect.height / 2);
+
+  const distanceX = circleX - closestX;
+  const distanceY = circleY - closestY;
+
+  return distanceX * distanceX + distanceY * distanceY < radius * radius;
+}
+
+function isPointBlocked(x, y, padding) {
+  return obstacles.some((obstacle) => {
+    return (
+      x > obstacle.x - obstacle.width / 2 - padding &&
+      x < obstacle.x + obstacle.width / 2 + padding &&
+      y > obstacle.y - obstacle.height / 2 - padding &&
+      y < obstacle.y + obstacle.height / 2 + padding
+    );
+  });
+}
+
+function rectsOverlap(x1, y1, w1, h1, x2, y2, w2, h2) {
+  return (
+    Math.abs(x1 - x2) < (w1 + w2) / 2 &&
+    Math.abs(y1 - y2) < (h1 + h2) / 2
+  );
+}
+
+function getMonsterHitRadius() {
+  return monster.size / 2;
+}
+
+function randomRange(min, max) {
+  return Math.random() * (max - min) + min;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+window.addEventListener("keydown", (event) => {
+  if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"].includes(event.code)) {
+    event.preventDefault();
+  }
+
+  if (!isRunning && event.code === "Space") return;
+
+  keys.add(event.code);
+});
+
+window.addEventListener("keyup", (event) => {
+  keys.delete(event.code);
+});
+
+function updateJoystick(event) {
+  const rect = joystickEl.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const maxDistance = rect.width * 0.32;
+  let dx = event.clientX - centerX;
+  let dy = event.clientY - centerY;
+  const distance = Math.hypot(dx, dy);
+
+  if (distance > maxDistance) {
+    dx = dx / distance * maxDistance;
+    dy = dy / distance * maxDistance;
+  }
+
+  touchInput.x = dx / maxDistance;
+  touchInput.y = dy / maxDistance;
+  joystickKnobEl.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+}
+
+function releaseJoystick(event) {
+  if (event.pointerId !== joystickPointerId) return;
+  joystickPointerId = null;
+  touchInput.x = 0;
+  touchInput.y = 0;
+  joystickKnobEl.style.transform = "translate(-50%, -50%)";
+}
+
+function resetMobileInput() {
+  joystickPointerId = null;
+  flashlightPointerId = null;
+  touchInput.x = 0;
+  touchInput.y = 0;
+  isFlashlightButtonPressed = false;
+
+  if (joystickKnobEl) {
+    joystickKnobEl.style.transform = "translate(-50%, -50%)";
+  }
+
+  if (flashlightButtonEl) {
+    flashlightButtonEl.classList.remove("active");
+  }
+}
+
+joystickEl.addEventListener("pointerdown", (event) => {
+  if (joystickPointerId !== null) return;
+  joystickPointerId = event.pointerId;
+  joystickEl.setPointerCapture(event.pointerId);
+  updateJoystick(event);
+});
+
+joystickEl.addEventListener("pointermove", (event) => {
+  if (event.pointerId === joystickPointerId) updateJoystick(event);
+});
+
+joystickEl.addEventListener("pointerup", releaseJoystick);
+joystickEl.addEventListener("pointercancel", releaseJoystick);
+joystickEl.addEventListener("lostpointercapture", releaseJoystick);
+
+function releaseFlashlightButton(event) {
+  if (event.pointerId !== flashlightPointerId) return;
+  flashlightPointerId = null;
+  isFlashlightButtonPressed = false;
+  flashlightButtonEl.classList.remove("active");
+}
+
+flashlightButtonEl.addEventListener("pointerdown", (event) => {
+  if (flashlightPointerId !== null || !isRunning) return;
+  event.preventDefault();
+  initAudio();
+  flashlightPointerId = event.pointerId;
+  isFlashlightButtonPressed = true;
+  flashlightButtonEl.classList.add("active");
+  flashlightButtonEl.setPointerCapture(event.pointerId);
+});
+
+flashlightButtonEl.addEventListener("pointerup", releaseFlashlightButton);
+flashlightButtonEl.addEventListener("pointercancel", releaseFlashlightButton);
+flashlightButtonEl.addEventListener("lostpointercapture", releaseFlashlightButton);
+flashlightButtonEl.addEventListener("contextmenu", (event) => event.preventDefault());
+
+window.addEventListener("resize", () => {
+  if (!isRunning) return;
+
+  const { width, height } = getGameSize();
+
+  player.x = clamp(player.x, player.size / 2, width - player.size / 2);
+  player.y = clamp(player.y, player.size / 2, height - player.size / 2);
+  exit.x = width - 80;
+  exit.y = 70;
+
+  createObstacles();
+  updateRender();
+});
+
+initGameElementStyles();
+showTitleScreen();
+
+  </script>
 </body>
 </html>
