@@ -1,4 +1,4 @@
-const CACHE_NAME = "light-the-way-v2";
+const CACHE_NAME = "light-the-way-v3";
 const APP_ASSETS = [
   "./",
   "./index.html",

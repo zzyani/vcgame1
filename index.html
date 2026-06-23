@@ -495,7 +495,7 @@ button {
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 720px), (pointer: coarse) and (orientation: landscape) {
   html,
   body {
     width: 100%;
@@ -580,6 +580,58 @@ button {
 
   .end-button-wrap {
     flex-direction: column;
+  }
+}
+
+@media (pointer: coarse) and (orientation: landscape) {
+  .hud {
+    top: max(6px, env(safe-area-inset-top));
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    gap: 6px;
+  }
+
+  .hud-card {
+    padding: 6px 8px;
+    border-radius: 10px;
+  }
+
+  .hud-card span {
+    margin-bottom: 3px;
+    font-size: 9px;
+  }
+
+  .hud-card strong {
+    font-size: 11px;
+  }
+
+  .battery-bar {
+    height: 10px;
+  }
+
+  .joystick {
+    bottom: max(14px, env(safe-area-inset-bottom));
+    left: max(16px, env(safe-area-inset-left));
+    width: 96px;
+    height: 96px;
+  }
+
+  .joystick-knob {
+    width: 44px;
+    height: 44px;
+  }
+
+  .flashlight-button {
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
+    width: 82px;
+    height: 82px;
+    border-radius: 18px;
+    font-size: 15px;
+  }
+
+  .message {
+    padding: 58px 120px 104px;
   }
 }
 
